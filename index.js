@@ -9,7 +9,7 @@ const port = 3000
 const adminkey = 'ZL0j7LniNCwqmR13WlwO'
 const tokenfreq = 60 //in sec
 const randomfreq = 10 //in sec
-const cleardatabase = true //clears whole database after server start
+const cleardatabase = false //clears whole database after server start ONLY USEFUL FOR DEVELOPMENT
 
 initialize()
 var db = new loki('tokens.db', {autoload: true, autosave: true, autoloadCallback: databaseInitialize})
@@ -17,6 +17,11 @@ const app = express()
 app.use(bodyParser.json({ extended: true }))
 
 app.post('/add', async (req, res) => {
+  if (req.body.key !== adminkey)
+  {
+    //Errorhandling
+    return
+  }
   var name = req.body.name.toString()
   var url = req.body.url.toString().match(/http.+(?=\/moodle)/)
   if (url === null || await got.get(url).text.match(/content="moodle/) === null)
@@ -29,39 +34,19 @@ app.post('/add', async (req, res) => {
 })
 
 app.post('/remove/*', (req, res) => {
-  if (db.getCollection(req.path.replaceAll('/','').replace('remove','')) === null)
+  if (req.body.key !== adminkey)
   {
-    res.send('Not found')
-  }
-  else
-  {
-    db.removeCollection(req.path.replaceAll('/','').replace('remove',''))
-    res.send('Removed')
+    //Errorhandling
+    return
   }
 })
 
 app.post('/*/add', (req, res) => {
-  if (db.getCollection(req.path.replaceAll('/','').replace('add','')) === null)
-  {
-    res.send('Not found')
-  }
-  else
-  {
-    console.log(req.body.cool)
-    res.send('Found')
-  }
+
 })
 
 app.get('/*', (req, res) => {
-  var collection = db.getCollection(req.path.replaceAll('/',''))
-  if (collection === null)
-  {
-    res.send('Not found')
-  }
-  else
-  {
-    res.send(collection.find())
-  }
+  var collection = db.getCollection(req.path.replaceAll('/','')) //Partially right
 })
 
 function initialize() {
@@ -79,6 +64,7 @@ function initialize() {
 function databaseInitialize() {
   if (cleardatabase) {
     db.addCollection('tokens')
+    db.saveDatabase()
   }
   app.listen(port, () => {
     console.log(`Example app listening at http://localhost:${port}`)
