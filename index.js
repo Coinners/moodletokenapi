@@ -70,7 +70,7 @@ function initialize() {
 function databaseInitialize() {
   if (cleardatabase) {
     db.addCollection('classes')
-    //db.saveDatabase()
+    db.saveDatabase()
   }
   app.listen(port, () => {
     console.log(`Example app listening at http://localhost:${port}`)
