@@ -1,0 +1,6 @@
+Login User through password & name:
+GET https://moodle.rbs-ulm.de/moodle/blocks/exa2fa/login/
+REGEX (?<="logintoken" value=")\w{32}
+POST https://moodle.rbs-ulm.de/moodle/blocks/exa2fa/login/ ajax=true&anchor=&logintoken=JmB9H5BYS0cHzN5BJMrKSK1ect9WmJPQ&username=jungnicl&password=GGAnderson&token=
+GET REGEX (?<="url":").+(?=","original)
+
