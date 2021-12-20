@@ -9,16 +9,22 @@ const port = 3000
 const adminkey = 'ZL0j7LniNCwqmR13WlwO'
 const tokenfreq = 60 //in sec
 const randomfreq = 10 //in sec
-const cleardatabase = true //Clears whole database after server start
+const cleardatabase = true //clears whole database after server start
 
 initialize()
-var db = new loki('tokens.db', { autoload: true, autosave: true, autoloadCallback: databaseInitialize })
+var db = new loki('tokens.db', {autoload: true, autosave: true, autoloadCallback: databaseInitialize})
 const app = express()
 app.use(bodyParser.json({ extended: true }))
 
-app.post('/add', (req, res) => {
-  var id = uuidv4()
-  db.addCollection(id)
+app.post('/add', async (req, res) => {
+  var name = req.body.name.toString()
+  var url = req.body.url.toString().match(/http.+(?=\/moodle)/)
+  if (url === null || await got.get(url).text.match(/content="moodle/) === null)
+  {
+    //Errorhandling
+    return
+  }
+  db.getCollection('tokens').add({'name': name, 'url': url, 'id': uuidv4(), 'tokens':[]})
   res.send(id)
 })
 
