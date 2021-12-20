@@ -35,8 +35,8 @@ app.post('/add', async (req, res) => {
     //Errorhandling
     return
   }
-  db.getCollection('classes').add({'name': name, 'url': url, 'id': uuidv4(), 'tokens':[]})
-  res.send(id)
+  db.getCollection('classes').insert({'name': name, 'url': url, 'id': uuidv4(), 'tokens':[]})
+  res.status(200).send()
 })
 
 app.post('/remove/*', (req, res) => {
