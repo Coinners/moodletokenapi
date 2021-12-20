@@ -24,7 +24,13 @@ app.post('/add', async (req, res) => {
   }
   var name = req.body.name.toString()
   var url = req.body.url.toString().match(/http.+(?=\/moodle)/)
-  if (url === null || await got.get(url).text.match(/content="moodle/) === null)
+  if (url === null)
+  {
+    //Errorhandling
+    return
+  }
+  var moodle = await got.get(url).text()
+  if (moodle.match(/content="moodle/) === null)
   {
     //Errorhandling
     return
