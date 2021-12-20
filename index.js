@@ -9,7 +9,7 @@ const port = 3000
 const adminkey = 'ZL0j7LniNCwqmR13WlwO'
 const tokenfreq = 60 //in sec
 const randomfreq = 10 //in sec
-const cleardatabase = false //clears whole database after server start ONLY USEFUL FOR DEVELOPMENT
+const cleardatabase = true //clears whole database after server start ONLY USEFUL FOR DEVELOPMENT
 
 initialize()
 var db = new loki('tokens.db', {autoload: true, autosave: true, autoloadCallback: databaseInitialize})
@@ -17,25 +17,25 @@ const app = express()
 app.use(bodyParser.json({ extended: true }))
 
 app.post('/add', async (req, res) => {
-  if (req.body.key !== adminkey)
+  if (req.body.key.toString() !== adminkey)
   {
     //Errorhandling
     return
   }
   var name = req.body.name.toString()
-  var url = req.body.url.toString().match(/http.+(?=\/moodle)/)
+  var url = req.body.url.toString().match(/http.+\/(?=moodle)/)
   if (url === null)
   {
     //Errorhandling
     return
   }
-  var moodle = await got.get(url).text()
+  var moodle = await got.get(url[0]).text()
   if (moodle.match(/content="moodle/) === null)
   {
     //Errorhandling
     return
   }
-  db.getCollection('tokens').add({'name': name, 'url': url, 'id': uuidv4(), 'tokens':[]})
+  db.getCollection('classes').add({'name': name, 'url': url, 'id': uuidv4(), 'tokens':[]})
   res.send(id)
 })
 
@@ -69,8 +69,8 @@ function initialize() {
 
 function databaseInitialize() {
   if (cleardatabase) {
-    db.addCollection('tokens')
-    db.saveDatabase()
+    db.addCollection('classes')
+    //db.saveDatabase()
   }
   app.listen(port, () => {
     console.log(`Example app listening at http://localhost:${port}`)
