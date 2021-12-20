@@ -12,7 +12,7 @@ const randomfreq = 10 //in sec
 const cleardatabase = true //clears whole database after server start ONLY USEFUL FOR DEVELOPMENT
 
 initialize()
-var db = new loki('tokens.db', {autoload: true, autosave: true, autoloadCallback: databaseInitialize})
+var db = new loki('tokens.db', { autoload: true, autosave: true, autoloadCallback: databaseInitialize })
 const app = express()
 app.use(bodyParser.json({ extended: true }))
 
