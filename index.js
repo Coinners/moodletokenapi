@@ -72,9 +72,7 @@ app.get('/*', (req, res) => {
 function initialize() {
   if (cleardatabase)
   {
-    fs.unlink('./tokens.db', (err) => {
-      if (err) throw err
-    })
+    fs.unlink('./tokens.db')
   }
   fs.writeFile('./tokens.db', '', { flag: 'a' }, function (err) {
     if (err) throw err
