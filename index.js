@@ -32,7 +32,7 @@ app.post('/add', async (req, res) => {
     return
   }
   var moodle = await got.get(url[0]).text()
-  if (moodle.match(/content='moodle/) === null)
+  if (moodle.match('moodle') === null)
   {
     res.status(400).send({'error-code':400,'error-message':'Invalid website','data':[]})
     return
@@ -51,19 +51,26 @@ app.post('/remove/*', (req, res) => {
   res.status(200).send({'error-code':200,'error-message':'OK','data':[]})
 })
 
-app.post('/*/add', (req, res) => {
+app.post('/*/add', async (req, res) => {
+  console.log(req.path.replaceAll(/\/|add/g))
   var schoolClass = db.getCollection('classes').findOne({'id':req.path.replaceAll(/\/|add/g,'')})
   if (schoolClass === null)
   {
     res.status(404).send({'error-code':404,'error-message':'Not found','data':[]})
     return
   }
-  await got.get(schoolClass.url)
+  var token = req.body.token.toString()
+  var moodle = await got.get(schoolClass.url,{headers: {Cookie: 'MoodleSession='+token}})
+  if (moodle.statusCode !== 200)
+  {
+    res.status(400).send({'error-code':400,'error-message':'Invalid token','data':[]})
+    return
+  }
   var name = req.body.name.toString()
   var time = Date.now()
-  var token = req.body.token.toString()
-  var userid
+  var userid = await moodle.text().match(/php\?userid=\d+/gm)
   var id = uuidv4()
+  console.log([name,time,userid,id])
   res.status(200).send({'error-code':200,'error-message':'OK','data':[]})
 })
 
@@ -84,7 +91,7 @@ app.get('/*', (req, res) => {
 function initialize() {
   if (cleardatabase)
   {
-    fs.unlink('./tokens.db')
+    fs.unlink('./tokens.db', ()=>{})
   }
   fs.writeFile('./tokens.db', '', { flag: 'a' }, function (err) {
     if (err) throw err
