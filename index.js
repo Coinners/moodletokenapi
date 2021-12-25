@@ -21,52 +21,52 @@ app.use(bodyParser.json({ extended: true }))
 app.post('/add', async (req, res) => {
   if (req.body.key.toString() !== adminkey)
   {
-    res.status(400).send({"error-code":400,"error-message":"Invalid adminkey","data":[]})
+    res.status(400).send({'error-code':400,'error-message':'Invalid adminkey','data':[]})
     return
   }
   var name = req.body.name.toString()
   var url = req.body.url.toString().match(/http.+\/(?=moodle)/)
   if (url === null)
   {
-    res.status(400).send({"error-code":400,"error-message":"Invalid url","data":[]})
+    res.status(400).send({'error-code':400,'error-message':'Invalid url','data':[]})
     return
   }
   var moodle = await got.get(url[0]).text()
-  if (moodle.match(/content="moodle/) === null)
+  if (moodle.match(/content='moodle/) === null)
   {
-    res.status(400).send({"error-code":400,"error-message":"Invalid website","data":[]})
+    res.status(400).send({'error-code':400,'error-message':'Invalid website','data':[]})
     return
   }
   var id = uuidv4()
   db.getCollection('classes').insert({'name': name, 'url': url[0], 'id': id, 'tokens':[]})
-  res.status(200).send({"error-code":200,"error-message":"OK","data":[{'name': name, 'url': url[0], 'id': id}]})
+  res.status(200).send({'error-code':200,'error-message':'OK','data':[{'name': name, 'url': url[0], 'id': id}]})
 })
 
 app.post('/remove/*', (req, res) => {
   if (req.body.key !== adminkey)
   {
-    res.status(400).send({"error-code":400,"error-message":"Invalid adminkey","data":[]})
+    res.status(400).send({'error-code':400,'error-message':'Invalid adminkey','data':[]})
     return
   }
-  res.status(200).send({"error-code":200,"error-message":"OK","data":[]})
+  res.status(200).send({'error-code':200,'error-message':'OK','data':[]})
 })
 
 app.post('/*/add', (req, res) => {
-  res.status(200).send({"error-code":200,"error-message":"OK","data":[]})
+  res.status(200).send({'error-code':200,'error-message':'OK','data':[]})
 })
 
 app.get('/', (req, res) => {
-  res.status(200).send({"error-code":200,"error-message":"OK","data":[{'serverversion':serverversion}]})
+  res.status(200).send({'error-code':200,'error-message':'OK','data':[{'serverversion':serverversion}]})
 })
 
 app.get('/*', (req, res) => {
   var schoolClass = db.getCollection('classes').findOne({'id':req.path.replaceAll('/','')})
   if (schoolClass === null)
   {
-    res.status(404).send({"error-code":404,"error-message":"Not found","data":[]})
+    res.status(404).send({'error-code':404,'error-message':'Not found','data':[]})
     return
   }
-  res.status(200).send({"error-code":200,"error-message":"OK","data":[schoolClass]})
+  res.status(200).send({'error-code':200,'error-message':'OK','data':[schoolClass]})
 })
 
 function initialize() {
