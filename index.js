@@ -60,6 +60,7 @@ app.post('/*/add', async (req, res) => {
     return
   }
   var token = req.body.token.toString()
+  //check if token exists
   var moodle = await got.get(schoolClass.url,{headers: {Cookie: 'MoodleSession='+token}}).catch((requestError)=>{
     if (requestError instanceof MaxRedirectsError)
     {
@@ -81,11 +82,11 @@ app.post('/*/add', async (req, res) => {
   }
   var name = req.body.name.toString()
   var time = Date.now()
-  var userid = moodle.body.match(/php\?userid=\d+/gm)[0]
+  var userid = moodle.body.match(/(?<=php\?userid=)\d+/)[0]
   var id = uuidv4()
-  console.log([name,time,userid,id])
-  schoolClass['tokens'].
-  res.status(200).send({'error-code':200,'error-message':'OK','data':[]})
+  schoolClass['tokens'].push({'name':name,'time':time,'token':token,'userid':userid,'id':id})
+  classes.update(schoolClass)
+  res.status(200).send({'error-code':200,'error-message':'OK','data':[{'name':name,'time':time,'token':token,'userid':userid,'id':id}]})
 })
 
 app.get('/', (req, res) => {
