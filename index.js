@@ -19,40 +19,42 @@ app.use(bodyParser.json({ extended: true }))
 app.post('/add', async (req, res) => {
   if (req.body.key.toString() !== adminkey)
   {
-    //Errorhandling
+    res.status(400).send({"error-code":400,"error-message":"Invalid adminkey","data":[]})
     return
   }
   var name = req.body.name.toString()
   var url = req.body.url.toString().match(/http.+\/(?=moodle)/)
   if (url === null)
   {
-    //Errorhandling
+    res.status(400).send({"error-code":400,"error-message":"Invalid url","data":[]})
     return
   }
   var moodle = await got.get(url[0]).text()
   if (moodle.match(/content="moodle/) === null)
   {
-    //Errorhandling
+    res.status(400).send({"error-code":400,"error-message":"Invalid website","data":[]})
     return
   }
   db.getCollection('classes').insert({'name': name, 'url': url, 'id': uuidv4(), 'tokens':[]})
-  res.status(200).send()
+  res.status(200).send({"error-code":200,"error-message":"OK","data":[]})
 })
 
 app.post('/remove/*', (req, res) => {
   if (req.body.key !== adminkey)
   {
-    //Errorhandling
+    res.status(400).send({"error-code":400,"error-message":"Invalid adminkey","data":[]})
     return
   }
+  res.status(200).send({"error-code":200,"error-message":"OK","data":[]})
 })
 
 app.post('/*/add', (req, res) => {
-
+  res.status(200).send({"error-code":200,"error-message":"OK","data":[]})
 })
 
 app.get('/*', (req, res) => {
   var collection = db.getCollection(req.path.replaceAll('/','')) //Partially right
+  res.status(200).send({"error-code":200,"error-message":"OK","data":[]})
 })
 
 function initialize() {
@@ -82,7 +84,7 @@ function checkTokens() {
   return new Promise(async function(resolve, reject) {
     while (true) {
       await new Promise(r => setTimeout(r, tokenfreq*1000))
-      console.log('Token Check')
+      //Logic
     }
   })
 }
@@ -91,7 +93,7 @@ function findRandoms() {
   return new Promise(async function(resolve, reject) {
     while (true) {
       await new Promise(r => setTimeout(r, randomfreq*1000))
-      console.log('Random Find')
+      //Logic
     }
   })
 }
