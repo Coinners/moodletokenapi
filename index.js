@@ -68,9 +68,10 @@ app.post('/*/add', async (req, res) => {
   }
   var name = req.body.name.toString()
   var time = Date.now()
-  var userid = await moodle.text().match(/php\?userid=\d+/gm)
+  var userid = moodle.body.match(/php\?userid=\d+/gm)
   var id = uuidv4()
   console.log([name,time,userid,id])
+  //Add to database
   res.status(200).send({'error-code':200,'error-message':'OK','data':[]})
 })
 
