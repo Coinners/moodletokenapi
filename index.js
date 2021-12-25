@@ -2,7 +2,7 @@ import express from 'express'
 import bodyParser from 'body-parser'
 import loki from 'lokijs'
 import { v4 as uuidv4 } from 'uuid'
-import got from 'got'
+import got, { MaxRedirectsError } from 'got'
 import fs from 'fs'
 
 const port = 3000
@@ -52,7 +52,7 @@ app.post('/remove/*', (req, res) => {
 })
 
 app.post('/*/add', async (req, res) => {
-  console.log(req.path.replaceAll(/\/|add/g))
+  var error = false
   var schoolClass = db.getCollection('classes').findOne({'id':req.path.replaceAll(/\/|add/g,'')})
   if (schoolClass === null)
   {
@@ -60,7 +60,20 @@ app.post('/*/add', async (req, res) => {
     return
   }
   var token = req.body.token.toString()
-  var moodle = await got.get(schoolClass.url,{headers: {Cookie: 'MoodleSession='+token}})
+  var moodle = await got.get(schoolClass.url,{headers: {Cookie: 'MoodleSession='+token}}).catch((requestError)=>{
+    if (requestError instanceof MaxRedirectsError)
+    {
+      res.status(400).send({'error-code':400,'error-message':'Invalid token','data':[]})
+      error = true
+    }
+    else
+    {
+      res.status(410).send({'error-code':410,'error-message':'Can\'t reach moodle server','data':[]})
+      error = true
+    }
+  })
+  if (error)
+  { return }
   if (moodle.statusCode !== 200)
   {
     res.status(400).send({'error-code':400,'error-message':'Invalid token','data':[]})
