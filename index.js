@@ -5,17 +5,17 @@ import { v4 as uuidv4 } from 'uuid'
 import got, { MaxRedirectsError } from 'got'
 import fs from 'fs'
 
-const port = 3000
-const adminkey = 'ZL0j7LniNCwqmR13WlwO'
+const port = 3000 //the port the server's hosted on
+const adminkey = 'ZL0j7LniNCwqmR13WlwO' //Random 20 character string
 const tokenfreq = 60 //in sec
 const randomfreq = 10 //in sec
 const cleardatabase = true //clears whole database after server start ONLY USEFUL FOR DEVELOPMENT
-const serverversion = 1 //DONT CHANGE THIS
-//make const classes instance
 
 initialize()
 var db = new loki('tokens.db', { autoload: true, autosave: true, autoloadCallback: databaseInitialize })
+const serverversion = 1
 const app = express()
+var classes
 app.use(bodyParser.json({ extended: true }))
 
 app.post('/add', async (req, res) => {
@@ -38,7 +38,7 @@ app.post('/add', async (req, res) => {
     return
   }
   var id = uuidv4()
-  db.getCollection('classes').insert({'name': name, 'url': url[0], 'id': id, 'tokens':[]})
+  classes.insert({'name': name, 'url': url[0], 'id': id, 'tokens':[]})
   res.status(200).send({'error-code':200,'error-message':'OK','data':[{'name': name, 'url': url[0], 'id': id}]})
 })
 
@@ -53,7 +53,7 @@ app.post('/remove/*', (req, res) => {
 
 app.post('/*/add', async (req, res) => {
   var error = false
-  var schoolClass = db.getCollection('classes').findOne({'id':req.path.replaceAll(/\/|add/g,'')})
+  var schoolClass = classes.findOne({'id':req.path.replaceAll(/\/|add/g,'')})
   if (schoolClass === null)
   {
     res.status(404).send({'error-code':404,'error-message':'Not found','data':[]})
@@ -81,10 +81,10 @@ app.post('/*/add', async (req, res) => {
   }
   var name = req.body.name.toString()
   var time = Date.now()
-  var userid = moodle.body.match(/php\?userid=\d+/gm)
+  var userid = moodle.body.match(/php\?userid=\d+/gm)[0]
   var id = uuidv4()
   console.log([name,time,userid,id])
-  //Add to database
+  schoolClass['tokens'].
   res.status(200).send({'error-code':200,'error-message':'OK','data':[]})
 })
 
@@ -93,7 +93,7 @@ app.get('/', (req, res) => {
 })
 
 app.get('/*', (req, res) => {
-  var schoolClass = db.getCollection('classes').findOne({'id':req.path.replaceAll('/','')})
+  var schoolClass = classes.findOne({'id':req.path.replaceAll('/','')})
   if (schoolClass === null)
   {
     res.status(404).send({'error-code':404,'error-message':'Not found','data':[]})
@@ -117,6 +117,7 @@ function databaseInitialize() {
     db.addCollection('classes')
     db.saveDatabase()
   }
+  classes = db.getCollection('classes')
   app.listen(port, () => {
     console.log(`Example app listening at http://localhost:${port}`)
     Promise.all([checkTokens(),findRandoms()])
