@@ -10,7 +10,7 @@ const adminkey = 'ZL0j7LniNCwqmR13WlwO'
 const tokenfreq = 60 //in sec
 const randomfreq = 10 //in sec
 const cleardatabase = true //clears whole database after server start ONLY USEFUL FOR DEVELOPMENT
-const serverversion = 1 //DON'T CHANGE THIS
+const serverversion = 1 //DONT CHANGE THIS
 //make const classes instance
 
 initialize()
