@@ -52,6 +52,18 @@ app.post('/remove/*', (req, res) => {
 })
 
 app.post('/*/add', (req, res) => {
+  var schoolClass = db.getCollection('classes').findOne({'id':req.path.replaceAll(/\/|add/g,'')})
+  if (schoolClass === null)
+  {
+    res.status(404).send({'error-code':404,'error-message':'Not found','data':[]})
+    return
+  }
+  await got.get(schoolClass.url)
+  var name = req.body.name.toString()
+  var time = Date.now()
+  var token = req.body.token.toString()
+  var userid
+  var id = uuidv4()
   res.status(200).send({'error-code':200,'error-message':'OK','data':[]})
 })
 

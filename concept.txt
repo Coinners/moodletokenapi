@@ -2,13 +2,6 @@ Collection tokens = [
     {"name":"6TG10/1 Robert Bosch","url":"https://moodle.rbs-ulm.de/moodle/","id":"45b12ad8-93c5-468b-a770-387118fb2b26","tokens":[{"name":"demo person","time":1648014517,"token":"oerusngrkggkjregm","userid":2544,"id":"a9475b93-ce68-4bee-b510-8e8729f5a5a2"}]}
 ]
 
-Needed Api-Methods:
-    Add Class(string class_id): Adds Class to Database
-    Remove Class(string class_id): Removes Class from Database
-    Add Token(string class_id, string name, string token): Adds Token to Class
-    Get Tokens(string class_id): Fetches current list of tokens from class
-    +Check Class(string class_id): Check whether class exists in database
-
 consistent responses:
 {
     "error-code":200,
