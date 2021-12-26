@@ -4,6 +4,7 @@ import loki from 'lokijs'
 import { v4 as uuidv4 } from 'uuid'
 import got, { MaxRedirectsError } from 'got'
 import fs from 'fs'
+import { SlashCommandStringOption } from '@discordjs/builders'
 
 const port = 3000 //the port the server's hosted on
 const adminkey = 'ZL0j7LniNCwqmR13WlwO' //Random 20 character string
@@ -25,21 +26,21 @@ app.post('/add', async (req, res) => {
     return
   }
   var name = req.body.name.toString()
-  var url = req.body.url.toString().match(/http.+\/(?=moodle)/)
+  var url = req.body.url.toString().match(/http.+\/(?=moodle)/)[0]
   if (url === null)
   {
     res.status(400).send({'error-code':400,'error-message':'Invalid url','data':[]})
     return
   }
-  var moodle = await got.get(url[0]).text()
+  var moodle = await got.get(url).text()
   if (moodle.match('moodle') === null)
   {
     res.status(400).send({'error-code':400,'error-message':'Invalid website','data':[]})
     return
   }
   var id = uuidv4()
-  classes.insert({'name': name, 'url': url[0], 'id': id, 'tokens':[]})
-  res.status(200).send({'error-code':200,'error-message':'OK','data':[{'name': name, 'url': url[0], 'id': id}]})
+  classes.insert({'name': name, 'url': url, 'id': id, 'tokens':[]})
+  res.status(200).send({'error-code':200,'error-message':'OK','data':[{'name': name, 'url': url, 'id': id}]})
 })
 
 app.post('/remove/*', (req, res) => {
@@ -67,7 +68,18 @@ app.post('/*/add', async (req, res) => {
     return
   }
   var token = req.body.token.toString()
-  //check if token exists
+  schoolClass.tokens.forEach(element => {
+    if (element.token === token)
+    {
+      error = true
+      return
+    }
+  })
+  if (error)
+  {
+    res.status(400).send({'error-code':400,'error-message':'Token already exists','data':[]})
+    return
+  }
   var moodle = await got.get(schoolClass.url,{headers: {Cookie: 'MoodleSession='+token}}).catch((requestError)=>{
     if (requestError instanceof MaxRedirectsError)
     {
@@ -115,7 +127,7 @@ function initialize() {
   {
     fs.unlink('./tokens.db', ()=>{})
   }
-  fs.writeFile('./tokens.db', '', { flag: 'a' }, function (err) {
+  fs.writeFile('./tokens.db', '', { flag: 'a' }, (err) => {
     if (err) throw err
   })
 }
@@ -127,7 +139,7 @@ function databaseInitialize() {
   }
   classes = db.getCollection('classes')
   app.listen(port, () => {
-    console.log(`Example app listening at http://localhost:${port}`)
+    console.log(`Token server listening at http://localhost:${port}`)
     Promise.all([checkTokens(),findRandoms()])
   })
 }
