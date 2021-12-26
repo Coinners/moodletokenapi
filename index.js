@@ -48,6 +48,13 @@ app.post('/remove/*', (req, res) => {
     res.status(400).send({'error-code':400,'error-message':'Invalid adminkey','data':[]})
     return
   }
+  var schoolClass = classes.findOne({'id':req.path.replaceAll(/\/|remove/g,'')})
+  if (schoolClass === null)
+  {
+    res.status(400).send({'error-code':404,'error-message':'Could not find class','data':[]})
+    return
+  }
+  classes.remove(schoolClass)
   res.status(200).send({'error-code':200,'error-message':'OK','data':[]})
 })
 
