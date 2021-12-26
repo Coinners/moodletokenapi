@@ -4,13 +4,14 @@ import loki from 'lokijs'
 import { v4 as uuidv4 } from 'uuid'
 import got, { MaxRedirectsError } from 'got'
 import fs from 'fs'
-import { SlashCommandStringOption } from '@discordjs/builders'
 
 const port = 3000 //the port the server's hosted on
 const adminkey = 'ZL0j7LniNCwqmR13WlwO' //Random 20 character string
 const tokenfreq = 60 //in sec
 const randomfreq = 10 //in sec
 const cleardatabase = true //clears whole database after server start ONLY USEFUL FOR DEVELOPMENT
+
+//TODO Handle errors for example .toString() fails + Make token functionality working
 
 initialize()
 var db = new loki('tokens.db', { autoload: true, autosave: true, autoloadCallback: databaseInitialize })
