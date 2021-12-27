@@ -3,8 +3,8 @@ import got from 'got'
 import {CookieJar} from 'tough-cookie'
 
 const sessiontoken = '8a76vmeqvpl1ihhhf92uqm24b8'
-const cookieJar = new CookieJar();
-const setCookie = promisify(cookieJar.setCookie.bind(cookieJar));
+const cookieJar = new CookieJar()
+const setCookie = promisify(cookieJar.setCookie.bind(cookieJar))
 
 await setCookie('MoodleSession='+sessiontoken,'https://moodle.rbs-ulm.de')
 var client = got.extend({ cookieJar })
