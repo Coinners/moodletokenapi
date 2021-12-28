@@ -13,7 +13,7 @@ var login = await client.get('https://moodle.rbs-ulm.de/moodle/').text()
 var userid = login.match(/(?<=php\?userid=)\d+/)[0]
 var sessionkey = login.match(/(?<=sesskey=)\w{10}/)[0]
 var username = login.match(/(?<=class="usertext mr-1">).*?(?=\<\/span)/)[0]
-console.log('time='+Date.now()+'+\nsessionkey='+sessionkey+'\nuserid='+userid+'\nusername='+username)
+console.log('time='+Date.now()+'\nsessionkey='+sessionkey+'\nuserid='+userid+'\nusername='+username)
 while (true) {
     var timeleft = await client.post('https://moodle.rbs-ulm.de/moodle/lib/ajax/service.php?sesskey='+sessionkey+'&info=core_session_time_remaining&nosessionupdate=true',{json:[{"index":0,"methodname":"core_session_time_remaining","args":{}}]}).json()
     timeleft = timeleft[0]['data']['timeremaining']
