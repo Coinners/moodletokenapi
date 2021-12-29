@@ -2,7 +2,7 @@ import {promisify} from 'util'
 import got from 'got'
 import {CookieJar} from 'tough-cookie'
 
-const sessiontoken = 'fvdi07rkq5miv3vmc1p8j7llq3'
+const sessiontoken = '6mhol5qo7despjaj9hq3srtuv0' //orig: fvdi07rkq5miv3vmc1p8j7llq3
 const cookieJar = new CookieJar()
 const setCookie = promisify(cookieJar.setCookie.bind(cookieJar))
 
