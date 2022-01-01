@@ -12,6 +12,8 @@ const randomfreq = 10 //in sec
 const cleardatabase = true //clears whole database after server start ONLY USEFUL FOR DEVELOPMENT
 
 //TODO Handle errors for example .toString() fails
+//TODO Implement token refresh
+//TODO Fetch Name automatically
 
 initialize()
 var db = new loki('tokens.db', { autoload: true, autosave: true, autoloadCallback: databaseInitialize })
