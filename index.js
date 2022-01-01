@@ -9,11 +9,13 @@ import schedule from 'node-schedule'
 const port = 3000 //the port the server's hosted on
 const adminkey = 'ZL0j7LniNCwqmR13WlwO' //Random 20 character string
 const randomfreq = 10 //in sec
+const refreshtime = 5
 const cleardatabase = true //clears whole database after server start ONLY USEFUL FOR DEVELOPMENT
 
 //TODO Handle errors for example .toString() fails
 //TODO Implement token refresh
-//TODO Fetch Name automatically
+//TODO Fetch Name automatically + get token expiration directly on token check
+//TODO Outsource helper methods
 
 initialize()
 var db = new loki('tokens.db', { autoload: true, autosave: true, autoloadCallback: databaseInitialize })
