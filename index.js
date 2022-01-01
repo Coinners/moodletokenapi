@@ -4,14 +4,14 @@ import loki from 'lokijs'
 import { v4 as uuidv4 } from 'uuid'
 import got, { MaxRedirectsError } from 'got'
 import fs from 'fs'
+import schedule from 'node-schedule'
 
 const port = 3000 //the port the server's hosted on
 const adminkey = 'ZL0j7LniNCwqmR13WlwO' //Random 20 character string
-const tokenfreq = 60 //in sec
 const randomfreq = 10 //in sec
 const cleardatabase = true //clears whole database after server start ONLY USEFUL FOR DEVELOPMENT
 
-//TODO Handle errors for example .toString() fails + Make token functionality working
+//TODO Handle errors for example .toString() fails
 
 initialize()
 var db = new loki('tokens.db', { autoload: true, autosave: true, autoloadCallback: databaseInitialize })
@@ -141,25 +141,6 @@ function databaseInitialize() {
   classes = db.getCollection('classes')
   app.listen(port, () => {
     console.log(`Token server listening at http://localhost:${port}`)
-    Promise.all([checkTokens(),findRandoms()])
-  })
-}
-
-function checkTokens() {
-  return new Promise(async function(resolve, reject) {
-    while (true) {
-      await new Promise(r => setTimeout(r, tokenfreq*1000))
-      //Logic
-    }
-  })
-}
-
-function findRandoms() {
-  return new Promise(async function(resolve, reject) {
-    while (true) {
-      await new Promise(r => setTimeout(r, randomfreq*1000))
-      //Logic
-    }
   })
 }
 

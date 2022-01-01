@@ -1,11 +1,7 @@
 import {promisify} from 'util'
 import got from 'got'
 import {CookieJar} from 'tough-cookie'
-import schedule from 'node-schedule'
 
-schedule.scheduleJob('*/5 * * * *', async ()=>{
-    console.log('lol')
-})
 const sessiontoken = 'e2l3dtkdue566qcvkptjhh68nj' //orig: fvdi07rkq5miv3vmc1p8j7llq3 other: 6mhol5qo7despjaj9hq3srtuv0
 const cookieJar = new CookieJar()
 const setCookie = promisify(cookieJar.setCookie.bind(cookieJar))
