@@ -18,6 +18,7 @@ var db = new loki('tokens.db', { autoload: true, autosave: true, autoloadCallbac
 const serverversion = 1
 const app = express()
 var classes
+var backup
 app.use(bodyParser.json({ extended: true }))
 
 app.post('/add', async (req, res) => {
@@ -106,6 +107,7 @@ app.post('/*/add', async (req, res) => {
   var id = uuidv4()
   schoolClass['tokens'].push({'name':name,'time':time,'token':token,'userid':userid,'id':id})
   classes.update(schoolClass)
+  backup.insert(token)
   res.status(200).send({'error-code':200,'error-message':'OK','data':[{'name':name,'time':time,'token':token,'userid':userid,'id':id}]})
 })
 
@@ -136,9 +138,11 @@ function initialize() {
 function databaseInitialize() {
   if (cleardatabase) {
     db.addCollection('classes')
+    db.addCollection('backup')
     db.saveDatabase()
   }
   classes = db.getCollection('classes')
+  backup = db.getCollection('backup')
   app.listen(port, () => {
     console.log(`Token server listening at http://localhost:${port}`)
   })
