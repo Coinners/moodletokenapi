@@ -4,21 +4,24 @@ import loki from 'lokijs'
 import { v4 as uuidv4 } from 'uuid'
 import got, { MaxRedirectsError } from 'got'
 import fs from 'fs'
-import schedule from 'node-schedule'
+import { ToadScheduler, SimpleIntervalJob, Task } from 'toad-scheduler'
 
 const port = 3000 //the port the server's hosted on
 const adminkey = 'ZL0j7LniNCwqmR13WlwO' //Random 20 character string
 const randomfreq = 10 //in sec
-const refreshtime = 5
+const refreshtime = 4
 const cleardatabase = true //clears whole database after server start ONLY USEFUL FOR DEVELOPMENT
 
-//TODO Implement token refresh
+//TODO Token Validation instantly returns time left
+//TODO Implement token refresh + Start every program start
 //TODO Fetch Name automatically + get token expiration directly on token check
 //TODO Use better argument capture method by express
 //TODO Outsource helper methods
 //TODO Maybe return dict instead of array
+//TODO Add user through email + password
 
 initialize()
+const scheduler = new ToadScheduler()
 var db = new loki('tokens.db', { autoload: true, autosave: true, autoloadCallback: databaseInitialize })
 const serverversion = 1
 const app = express()
