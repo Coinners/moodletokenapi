@@ -4,7 +4,7 @@
     "express": "^4.17.1",
     "got": "^12.0.0",
     "lokijs": "^1.5.12",
-    "node-schedule": "^2.1.0",
+    "toad-scheduler": "^1.6.0",
     "tough-cookie": "^4.0.0",
     "uuid": "^8.3.2"
   },

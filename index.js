@@ -14,6 +14,7 @@ const cleardatabase = true //clears whole database after server start ONLY USEFU
 
 //TODO Implement token refresh
 //TODO Fetch Name automatically + get token expiration directly on token check
+//TODO Use better argument capture method by express
 //TODO Outsource helper methods
 //TODO Maybe return dict instead of array
 
