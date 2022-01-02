@@ -12,13 +12,10 @@ const randomfreq = 10 //in sec
 const refreshtime = 4
 const cleardatabase = true //clears whole database after server start ONLY USEFUL FOR DEVELOPMENT
 
-//TODO Implement token refresh + Start every schedule on program start
-//TODO Token Validation instantly returns time left
-//TODO Fetch Name automatically + get token expiration directly on token check
 //TODO Use better argument capture method by express
 //TODO Outsource helper methods
 //TODO Maybe return dict instead of array
-//TODO Add user through email + password
+//TODO Handle moodle not available
 
 initialize()
 const scheduler = new ToadScheduler()
@@ -92,7 +89,7 @@ app.post('/*/add', async (req, res) => {
   {
     res.status(400).send({'error-code':400,'error-message':'Token already exists','data':[]})
     return
-  }
+  } //TODO Fetch Name automatically + get token expiration directly on token check
   var moodle = await got.get(schoolClass.url,{headers: {Cookie: 'MoodleSession='+token}}).catch((requestError)=>{
     if (requestError instanceof MaxRedirectsError)
     {
@@ -132,7 +129,7 @@ app.get('/*', (req, res) => {
     res.status(404).send({'error-code':404,'error-message':'Not found','data':[]})
     return
   }
-  res.status(200).send({'error-code':200,'error-message':'OK','data':[schoolClass]})
+  res.status(200).send({'error-code':200,'error-message':'OK','data':[removeProperties(schoolClass,'meta','$loki')]})
 })
 
 function initialize() {
@@ -158,8 +155,8 @@ function databaseInitialized() {
   if (!cleardatabase) {
     classes.data.forEach(schoolClass => {
       schoolClass.tokens.forEach(async token => {
-        var task = new AsyncTask(token.id, ()=>{}) //TODO Create token refresh
-        var job = new SimpleIntervalJob({seconds = await getTimeleft(token.token, token.sessionkey)-refreshtime}, task)
+        var task = new AsyncTask(token.id, refreshToken(token.token, token.userid))
+        var job = new SimpleIntervalJob({seconds: await getTimeleft(token.token, token.sessionkey)-refreshtime}, task)
         scheduler.addSimpleIntervalJob(job)
       })
     })
@@ -176,11 +173,11 @@ async function getTimeleft(token, sessionkey) {
 }
 
 async function refreshToken(token, userid) {
-  
+  await client.get('https://moodle.rbs-ulm.de/moodle/login/index.php?testsession='+userid,{headers:{Cookie:'MoodleSession='+token}})
 }
 
-async function findTokenbyUser(username, password, url) {
-  await got.post(url, {
+async function getTokenbyUser(username, password, url) { //TODO user auth through email + password
+  /*await got.post(url, {
     json: {
       ajax: true,
       anchor: null,
@@ -189,5 +186,10 @@ async function findTokenbyUser(username, password, url) {
       password: password,
       token: null
     }
-  })
+  })*/
+}
+
+function removeProperties(element, ...props) {
+  props.forEach(prop => delete element[prop])
+  return element
 }
