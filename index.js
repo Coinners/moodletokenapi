@@ -12,10 +12,10 @@ const randomfreq = 10 //in sec
 const refreshtime = 5
 const cleardatabase = true //clears whole database after server start ONLY USEFUL FOR DEVELOPMENT
 
-//TODO Handle errors for example .toString() fails
 //TODO Implement token refresh
 //TODO Fetch Name automatically + get token expiration directly on token check
 //TODO Outsource helper methods
+//TODO Maybe return dict instead of array
 
 initialize()
 var db = new loki('tokens.db', { autoload: true, autosave: true, autoloadCallback: databaseInitialize })
@@ -26,13 +26,13 @@ var backup
 app.use(bodyParser.json({ extended: true }))
 
 app.post('/add', async (req, res) => {
-  if (req.body.key.toString() !== adminkey)
+  if (req.body.key !== adminkey)
   {
     res.status(400).send({'error-code':400,'error-message':'Invalid adminkey','data':[]})
     return
   }
-  var name = req.body.name.toString()
-  var url = req.body.url.toString().match(/http.+\/(?=moodle)/)[0]
+  var name = req.body.name
+  var url = req.body.url.match(/http.+\/(?=moodle)/)[0]
   if (url === null)
   {
     res.status(400).send({'error-code':400,'error-message':'Invalid url','data':[]})
@@ -73,7 +73,7 @@ app.post('/*/add', async (req, res) => {
     res.status(404).send({'error-code':404,'error-message':'Not found','data':[]})
     return
   }
-  var token = req.body.token.toString()
+  var token = req.body.token
   schoolClass.tokens.forEach(element => {
     if (element.token === token)
     {
@@ -105,7 +105,7 @@ app.post('/*/add', async (req, res) => {
     res.status(400).send({'error-code':400,'error-message':'Invalid token','data':[]})
     return
   }
-  var name = req.body.name.toString()
+  var name = req.body.name
   var time = Date.now()
   var userid = moodle.body.match(/(?<=php\?userid=)\d+/)[0]
   var id = uuidv4()
