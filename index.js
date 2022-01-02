@@ -4,7 +4,7 @@ import loki from 'lokijs'
 import { v4 as uuidv4 } from 'uuid'
 import got, { MaxRedirectsError } from 'got'
 import fs from 'fs'
-import { ToadScheduler, SimpleIntervalJob, Task } from 'toad-scheduler'
+import { ToadScheduler, SimpleIntervalJob, Task, AsyncTask } from 'toad-scheduler'
 
 const port = 3000 //the port the server's hosted on
 const adminkey = 'ZL0j7LniNCwqmR13WlwO' //Random 20 character string
@@ -12,8 +12,8 @@ const randomfreq = 10 //in sec
 const refreshtime = 4
 const cleardatabase = true //clears whole database after server start ONLY USEFUL FOR DEVELOPMENT
 
+//TODO Implement token refresh + Start every schedule on program start
 //TODO Token Validation instantly returns time left
-//TODO Implement token refresh + Start every program start
 //TODO Fetch Name automatically + get token expiration directly on token check
 //TODO Use better argument capture method by express
 //TODO Outsource helper methods
@@ -22,7 +22,7 @@ const cleardatabase = true //clears whole database after server start ONLY USEFU
 
 initialize()
 const scheduler = new ToadScheduler()
-var db = new loki('tokens.db', { autoload: true, autosave: true, autoloadCallback: databaseInitialize })
+var db = new loki('tokens.db', { autoload: true, autosave: true, autoloadCallback: databaseInitialized })
 const serverversion = 1
 const app = express()
 var classes
@@ -65,6 +65,9 @@ app.post('/remove/*', (req, res) => {
     res.status(400).send({'error-code':404,'error-message':'Could not find class','data':[]})
     return
   }
+  schoolClass.tokens.forEach(element => {
+    scheduler.removeById(element.id)
+  })
   classes.remove(schoolClass)
   res.status(200).send({'error-code':200,'error-message':'OK','data':[]})
 })
@@ -94,13 +97,12 @@ app.post('/*/add', async (req, res) => {
     if (requestError instanceof MaxRedirectsError)
     {
       res.status(400).send({'error-code':400,'error-message':'Invalid token','data':[]})
-      error = true
     }
     else
     {
       res.status(410).send({'error-code':410,'error-message':'Can\'t reach moodle server','data':[]})
-      error = true
     }
+    error = true
   })
   if (error)
   { return }
@@ -134,6 +136,7 @@ app.get('/*', (req, res) => {
 })
 
 function initialize() {
+  console.log('Initializing')
   if (cleardatabase)
   {
     fs.unlink('./tokens.db', ()=>{})
@@ -143,7 +146,8 @@ function initialize() {
   })
 }
 
-function databaseInitialize() {
+function databaseInitialized() {
+  console.log('Database loaded')
   if (cleardatabase) {
     db.addCollection('classes')
     db.addCollection('backup')
@@ -151,9 +155,28 @@ function databaseInitialize() {
   }
   classes = db.getCollection('classes')
   backup = db.getCollection('backup')
+  if (!cleardatabase) {
+    classes.data.forEach(schoolClass => {
+      schoolClass.tokens.forEach(async token => {
+        var task = new AsyncTask(token.id, ()=>{}) //TODO Create token refresh
+        var job = new SimpleIntervalJob({seconds = await getTimeleft(token.token, token.sessionkey)-refreshtime}, task)
+        scheduler.addSimpleIntervalJob(job)
+      })
+    })
+  }
   app.listen(port, () => {
-    console.log(`Token server listening at http://localhost:${port}`)
+    console.log(`Server online at http://localhost:${port}`)
   })
+}
+
+async function getTimeleft(token, sessionkey) {
+  var timeleft = await client.post('https://moodle.rbs-ulm.de/moodle/lib/ajax/service.php?sesskey='+sessionkey+'&info=core_session_time_remaining&nosessionupdate=true', {json:[{"index":0,"methodname":"core_session_time_remaining","args":{}}], headers:{Cookie:'MoodleSession='+token}}).json()
+  timeleft = timeleft[0]['data']['timeremaining']
+  return timeleft
+}
+
+async function refreshToken(token, userid) {
+  
 }
 
 async function findTokenbyUser(username, password, url) {
