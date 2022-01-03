@@ -1,13 +1,13 @@
-import {promisify} from 'util'
 import got from 'got'
 import {CookieJar} from 'tough-cookie'
 
 const sessiontoken = 'fvdi07rkq5miv3vmc1p8j7llq3' //orig: fvdi07rkq5miv3vmc1p8j7llq3 other: 6mhol5qo7despjaj9hq3srtuv0
 const cookieJar = new CookieJar()
-const setCookie = promisify(cookieJar.setCookie.bind(cookieJar))
+//const setCookie = promisify(cookieJar.setCookie.bind(cookieJar))
 
-await setCookie('MoodleSession='+sessiontoken,'https://moodle.rbs-ulm.de')
+await cookieJar.setCookie('MoodleSession='+sessiontoken,'https://moodle.rbs-ulm.de')
 var client = got.extend({ cookieJar })
+console.log(await cookieJar.getCookies('https://moodle.rbs-ulm.de'))
 
 var login = await client.get('https://moodle.rbs-ulm.de/moodle/').text()
 var userid = login.match(/(?<=php\?userid=)\d+/)[0]

@@ -58,4 +58,5 @@ dist
 .yarn/install-state.gz
 .pnp.*
 *.db
-.vscode
+.vscode/
+tokens.json

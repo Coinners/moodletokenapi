@@ -4,12 +4,13 @@ import loki from 'lokijs'
 import { v4 as uuidv4 } from 'uuid'
 import got, { MaxRedirectsError } from 'got'
 import fs from 'fs'
-import { ToadScheduler, SimpleIntervalJob, Task, AsyncTask } from 'toad-scheduler'
+import { ToadScheduler, SimpleIntervalJob, AsyncTask } from 'toad-scheduler'
+import {CookieJar} from 'tough-cookie'
 
 const port = 3000 //the port the server's hosted on
 const adminkey = 'ZL0j7LniNCwqmR13WlwO' //Random 20 character string
 const randomfreq = 10 //in sec
-const refreshtime = 4
+const refreshtime = 4 //in sec
 const cleardatabase = true //clears whole database after server start ONLY USEFUL FOR DEVELOPMENT
 
 //TODO Use better argument capture method by express
@@ -69,7 +70,7 @@ app.post('/remove/*', (req, res) => {
   res.status(200).send({'error-code':200,'error-message':'OK','data':[]})
 })
 
-app.post('/*/add', async (req, res) => {
+app.post('/*/add', async (req, res) => { //Add option for adding by password + username
   var error = false
   var schoolClass = classes.findOne({'id':req.path.replaceAll(/\/|add/g,'')})
   if (schoolClass === null)
@@ -89,7 +90,7 @@ app.post('/*/add', async (req, res) => {
   {
     res.status(400).send({'error-code':400,'error-message':'Token already exists','data':[]})
     return
-  } //TODO Fetch Name automatically + get token expiration directly on token check
+  } //TODO get token expiration directly on token check
   var moodle = await got.get(schoolClass.url,{headers: {Cookie: 'MoodleSession='+token}}).catch((requestError)=>{
     if (requestError instanceof MaxRedirectsError)
     {
@@ -108,7 +109,7 @@ app.post('/*/add', async (req, res) => {
     res.status(400).send({'error-code':400,'error-message':'Invalid token','data':[]})
     return
   }
-  var name = req.body.name
+  var name = req.body.name //TODO fetch name automatically
   var time = Date.now()
   var userid = moodle.body.match(/(?<=php\?userid=)\d+/)[0]
   var id = uuidv4()
@@ -176,17 +177,15 @@ async function refreshToken(token, userid) {
   await client.get('https://moodle.rbs-ulm.de/moodle/login/index.php?testsession='+userid,{headers:{Cookie:'MoodleSession='+token}})
 }
 
-async function getTokenbyUser(username, password, url) { //TODO user auth through email + password
-  /*await got.post(url, {
-    json: {
-      ajax: true,
-      anchor: null,
-      logintoken: null,
-      username: username,
-      password: password,
-      token: null
-    }
-  })*/
+async function addUserbyAccount(username, password, url) { //TODO user auth through email + password
+  const cookieJar = new CookieJar()
+  const client = got.extend({ cookieJar })
+  var login = await client.get(url+'blocks/exa2fa/login/')
+  var logintoken = login.body.match(/(?<="logintoken" value=")\w{32}/)[0]
+  var userid = (await client.post(url+'blocks/exa2fa/login/',{form:{ajax: true,anchor:'',logintoken:logintoken,username:username,password:password,token:''}}).text()).match(/(?<=testsession=).*?(?=","original)/)[0]
+  await client.get(url+'login/index.php?testsession='+userid)
+  var token = (await cookieJar.getCookies('https://moodle.rbs-ulm.de'))[0].toJSON()['value']
+  return token
 }
 
 function removeProperties(element, ...props) {
