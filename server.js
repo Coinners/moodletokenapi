@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid'
 import got, { MaxRedirectsError } from 'got'
 import fs from 'fs'
 import { ToadScheduler, SimpleIntervalJob, AsyncTask } from 'toad-scheduler'
-import {CookieJar} from 'tough-cookie'
+import { CookieJar } from 'tough-cookie'
 
 const port = 3000 //the port the server's hosted on
 const adminkey = 'ZL0j7LniNCwqmR13WlwO' //Random 20 character string
@@ -14,8 +14,7 @@ const refreshtime = 4 //in sec
 const cleardatabase = true //clears whole database after server start ONLY USEFUL FOR DEVELOPMENT
 
 //TODO Use better argument capture method by express
-//TODO Outsource helper methods
-//TODO Maybe return dict instead of array
+//TODO Return dict instead of array
 //TODO Handle moodle not available
 
 initialize()
@@ -47,7 +46,6 @@ app.post('/add', async (req, res) => {
     return
   }
   var id = uuidv4()
-  classes.insert({'name': name, 'url': url, 'id': id, 'tokens':[]})
   res.status(200).send({'error-code':200,'error-message':'OK','data':[{'name': name, 'url': url, 'id': id}]})
 })
 
@@ -70,7 +68,7 @@ app.post('/remove/*', (req, res) => {
   res.status(200).send({'error-code':200,'error-message':'OK','data':[]})
 })
 
-app.post('/*/add', async (req, res) => { //Add option for adding by password + username
+app.post('/*/add', async (req, res) => { //TODO Add option for adding by password + username
   var error = false
   var schoolClass = classes.findOne({'id':req.path.replaceAll(/\/|add/g,'')})
   if (schoolClass === null)
@@ -109,14 +107,9 @@ app.post('/*/add', async (req, res) => { //Add option for adding by password + u
     res.status(400).send({'error-code':400,'error-message':'Invalid token','data':[]})
     return
   }
-  var name = req.body.name //TODO fetch name automatically
-  var time = Date.now()
-  var userid = moodle.body.match(/(?<=php\?userid=)\d+/)[0]
-  var id = uuidv4()
-  schoolClass['tokens'].push({'name':name,'time':time,'token':token,'userid':userid,'id':id})
-  classes.update(schoolClass)
-  backup.insert(token)
-  res.status(200).send({'error-code':200,'error-message':'OK','data':[{'name':name,'time':time,'token':token,'userid':userid,'id':id}]})
+  var user = { name: req.body.name,time: Date.now(),userid: moodle.body.match(/(?<=php\?userid=)\d+/)[0],id: uuidv4() }
+  addUsertoClass(user,schoolClass)
+  res.status(200).send({'error-code':200,'error-message':'OK','data':[user]})
 })
 
 app.get('/', (req, res) => {
@@ -153,33 +146,50 @@ function databaseInitialized() {
   }
   classes = db.getCollection('classes')
   backup = db.getCollection('backup')
-  if (!cleardatabase) {
-    classes.data.forEach(schoolClass => {
-      schoolClass.tokens.forEach(async token => {
-        var task = new AsyncTask(token.id, refreshToken(token.token, token.userid))
-        var job = new SimpleIntervalJob({seconds: await getTimeleft(token.token, token.sessionkey)-refreshtime}, task)
-        scheduler.addSimpleIntervalJob(job)
-      })
+  classes.data.forEach(schoolClass => {
+    schoolClass.tokens.forEach(async token => {
+      addUsertoTask(token)
     })
-  }
+  })
   app.listen(port, () => {
     console.log(`Server online at http://localhost:${port}`)
   })
 }
 
-async function getTimeleft(token, sessionkey) {
+async function getTimeleft(user) {
   var timeleft = await client.post('https://moodle.rbs-ulm.de/moodle/lib/ajax/service.php?sesskey='+sessionkey+'&info=core_session_time_remaining&nosessionupdate=true', {json:[{"index":0,"methodname":"core_session_time_remaining","args":{}}], headers:{Cookie:'MoodleSession='+token}}).json()
   timeleft = timeleft[0]['data']['timeremaining']
   return timeleft
 }
 
-async function refreshToken(token, userid) {
-  await client.get('https://moodle.rbs-ulm.de/moodle/login/index.php?testsession='+userid,{headers:{Cookie:'MoodleSession='+token}})
+async function refreshToken(user) {
+  await client.get('https://moodle.rbs-ulm.de/moodle/login/index.php?testsession='+user.userid,{headers:{Cookie:'MoodleSession='+token}})
 }
 
-async function addUserbyAccount(username, password, url) { //TODO user auth through email + password
+function addUsertoTask(user) {//TODO Change logic won't work if time interval === timeleft
+  var task = new AsyncTask(user.id, refreshToken(user.token, user.userid))
+  var job = new SimpleIntervalJob({seconds: await getTimeleft(user.token, user.sessionkey)-refreshtime}, task)
+  scheduler.addSimpleIntervalJob(job)
+}
+
+function addUsertoClass(user, schoolClass) {
+  schoolClass['tokens'].push({'name':name,'time':time,'token':token,'userid':userid,'id':id})
+  classes.update(schoolClass)
+  backup.insert(token)
+  addUsertoTask(user)
+}
+
+function addClasstoDatabase(schoolClass) {
+  classes.insert({'name': schoolClass.name, 'url': schoolClass.url, 'id': schoolClass.id, 'tokens':[]})
+}
+
+async function addUserbyToken(user) {
+  
+}
+
+async function addUserbyAccount(username, password, url) {
   const cookieJar = new CookieJar()
-  const client = got.extend({ cookieJar })
+  const client = got.extend({cookieJar})
   var login = await client.get(url+'blocks/exa2fa/login/')
   var logintoken = login.body.match(/(?<="logintoken" value=")\w{32}/)[0]
   var userid = (await client.post(url+'blocks/exa2fa/login/',{form:{ajax: true,anchor:'',logintoken:logintoken,username:username,password:password,token:''}}).text()).match(/(?<=testsession=).*?(?=","original)/)[0]
