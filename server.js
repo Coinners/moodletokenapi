@@ -6,6 +6,7 @@ import got from 'got'
 import fs from 'fs'
 import { ToadScheduler, SimpleIntervalJob, AsyncTask } from 'toad-scheduler'
 import { CookieJar } from 'tough-cookie'
+import { compileFunction } from 'vm'
 
 const port = 3000
 const adminkey = 'ZL0j7LniNCwqmR13WlwO'
@@ -32,7 +33,7 @@ app.post('/add', async (req, res) => {
     return
   }
   var name = req.body.name
-  var url = req.body.url.match(/http.+\/(?=moodle)/)[0]
+  var url = req.body.url.match(/http.+\/moodle/)[0]+'/' //TODO Change matching pattern to make request for validation
   if (url === null)
   {
     res.status(400).send({'error-code':400,'error-message':'Invalid url','data':{}})
@@ -68,7 +69,7 @@ app.post('/remove/:class', (req, res) => {
   res.status(200).send({'error-code':200,'error-message':'OK','data':{}})
 })
 
-app.post('/:class/add', async (req, res) => { //TODO PATCH BUGS
+app.post('/:class/add', async (req, res) => {
   var error = false
   var userid = null
   var schoolClass = classes.findOne({'id':req.params.class})
@@ -78,7 +79,6 @@ app.post('/:class/add', async (req, res) => { //TODO PATCH BUGS
     return
   }
   var token = req.body.token
-  console.log(req.body.password)
   if (req.body.password != null) {
     try {[token, userid] = await getTokenbyCredentials(req.body.name, req.body.password, schoolClass.url)}
     catch (e) {
@@ -170,15 +170,15 @@ async function refreshToken(user) {
 }
 
 async function addUsertoTask(user) {//TODO Change logic won't work if time interval === timeleft
-  /*var task = new AsyncTask(user.id, refreshToken(user.token, user.userid))
+  var task = new AsyncTask(user.id, refreshToken(user.token, user.userid))
   var job = new SimpleIntervalJob({seconds: await getTimeleft(user.token, user.sessionkey)-refreshtime}, task)
-  scheduler.addSimpleIntervalJob(job)*/
+  scheduler.addSimpleIntervalJob(job)
 }
 
 function addUsertoClass(user, schoolClass) {
   schoolClass['tokens'].push({'name':user.name,'time':user.time,'token':user.token,'userid':user.userid,'id':user.id})
   classes.update(schoolClass)
-  backup.insert(user.token)
+  backup.insert({token:user.token})
   addUsertoTask(user)
 }
 
