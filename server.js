@@ -14,7 +14,6 @@ const refreshtime = 4 //in sec
 const cleardatabase = true //clears whole database after server start ONLY USEFUL FOR DEVELOPMENT
 
 //TODO Use better argument capture method by express
-//TODO Return dict instead of array
 //TODO Handle moodle not available
 
 initialize()
@@ -29,43 +28,43 @@ app.use(bodyParser.json({ extended: true }))
 app.post('/add', async (req, res) => {
   if (req.body.key !== adminkey)
   {
-    res.status(400).send({'error-code':400,'error-message':'Invalid adminkey','data':[]})
+    res.status(400).send({'error-code':400,'error-message':'Invalid adminkey','data':{}})
     return
   }
   var name = req.body.name
   var url = req.body.url.match(/http.+\/(?=moodle)/)[0]
   if (url === null)
   {
-    res.status(400).send({'error-code':400,'error-message':'Invalid url','data':[]})
+    res.status(400).send({'error-code':400,'error-message':'Invalid url','data':{}})
     return
   }
   var moodle = await got.get(url).text()
   if (moodle.match('moodle') === null)
   {
-    res.status(400).send({'error-code':400,'error-message':'Invalid website','data':[]})
+    res.status(400).send({'error-code':400,'error-message':'Invalid website','data':{}})
     return
   }
   var id = uuidv4()
-  res.status(200).send({'error-code':200,'error-message':'OK','data':[{'name': name, 'url': url, 'id': id}]})
+  res.status(200).send({'error-code':200,'error-message':'OK','data':{'name': name, 'url': url, 'id': id}})
 })
 
 app.post('/remove/*', (req, res) => {
   if (req.body.key !== adminkey)
   {
-    res.status(400).send({'error-code':400,'error-message':'Invalid adminkey','data':[]})
+    res.status(400).send({'error-code':400,'error-message':'Invalid adminkey','data':{}})
     return
   }
   var schoolClass = classes.findOne({'id':req.path.replaceAll(/\/|remove/g,'')})
   if (schoolClass === null)
   {
-    res.status(400).send({'error-code':404,'error-message':'Could not find class','data':[]})
+    res.status(400).send({'error-code':404,'error-message':'Could not find class','data':{}})
     return
   }
   schoolClass.tokens.forEach(element => {
     scheduler.removeById(element.id)
   })
   classes.remove(schoolClass)
-  res.status(200).send({'error-code':200,'error-message':'OK','data':[]})
+  res.status(200).send({'error-code':200,'error-message':'OK','data':{}})
 })
 
 app.post('/*/add', async (req, res) => { //TODO Add option for adding by password + username
@@ -73,7 +72,7 @@ app.post('/*/add', async (req, res) => { //TODO Add option for adding by passwor
   var schoolClass = classes.findOne({'id':req.path.replaceAll(/\/|add/g,'')})
   if (schoolClass === null)
   {
-    res.status(404).send({'error-code':404,'error-message':'Not found','data':[]})
+    res.status(404).send({'error-code':404,'error-message':'Not found','data':{}})
     return
   }
   var token = req.body.token
@@ -86,17 +85,17 @@ app.post('/*/add', async (req, res) => { //TODO Add option for adding by passwor
   })
   if (error)
   {
-    res.status(400).send({'error-code':400,'error-message':'Token already exists','data':[]})
+    res.status(400).send({'error-code':400,'error-message':'Token already exists','data':{}})
     return
   } //TODO get token expiration directly on token check
   var moodle = await got.get(schoolClass.url,{headers: {Cookie: 'MoodleSession='+token}}).catch((requestError)=>{
     if (requestError instanceof MaxRedirectsError)
     {
-      res.status(400).send({'error-code':400,'error-message':'Invalid token','data':[]})
+      res.status(400).send({'error-code':400,'error-message':'Invalid token','data':{}})
     }
     else
     {
-      res.status(410).send({'error-code':410,'error-message':'Can\'t reach moodle server','data':[]})
+      res.status(410).send({'error-code':410,'error-message':'Can\'t reach moodle server','data':{}})
     }
     error = true
   })
@@ -104,26 +103,26 @@ app.post('/*/add', async (req, res) => { //TODO Add option for adding by passwor
   { return }
   if (moodle.statusCode !== 200)
   {
-    res.status(400).send({'error-code':400,'error-message':'Invalid token','data':[]})
+    res.status(400).send({'error-code':400,'error-message':'Invalid token','data':{}})
     return
   }
   var user = { name: req.body.name,time: Date.now(),userid: moodle.body.match(/(?<=php\?userid=)\d+/)[0],id: uuidv4() }
   addUsertoClass(user,schoolClass)
-  res.status(200).send({'error-code':200,'error-message':'OK','data':[user]})
+  res.status(200).send({'error-code':200,'error-message':'OK','data':user})
 })
 
 app.get('/', (req, res) => {
-  res.status(200).send({'error-code':200,'error-message':'OK','data':[{'serverversion':serverversion}]})
+  res.status(200).send({'error-code':200,'error-message':'OK','data':{'serverversion':serverversion}})
 })
 
 app.get('/*', (req, res) => {
   var schoolClass = classes.findOne({'id':req.path.replaceAll('/','')})
   if (schoolClass === null)
   {
-    res.status(404).send({'error-code':404,'error-message':'Not found','data':[]})
+    res.status(404).send({'error-code':404,'error-message':'Not found','data':{}})
     return
   }
-  res.status(200).send({'error-code':200,'error-message':'OK','data':[removeProperties(schoolClass,'meta','$loki')]})
+  res.status(200).send({'error-code':200,'error-message':'OK','data':removeProperties(schoolClass,'meta','$loki')})
 })
 
 function initialize() {
