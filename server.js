@@ -68,7 +68,7 @@ app.post('/remove/:class', (req, res) => {
   res.status(200).send({'error-code':200,'error-message':'OK','data':{}})
 })
 
-app.post('/:class/add', async (req, res) => {
+app.post('/:class/add', async (req, res) => { //TODO PATCH BUGS
   var error = false
   var userid = null
   var schoolClass = classes.findOne({'id':req.params.class})
@@ -80,14 +80,12 @@ app.post('/:class/add', async (req, res) => {
   var token = req.body.token
   console.log(req.body.password)
   if (req.body.password != null) {
-    getTokenbyCredentials(req.body.name, req.body.password, schoolClass.url).then((value)=>{
-      console.log(value)
-      [token, userid] = value
-      console.log([token, userid])
-    }).catch(()=>{
+    try {[token, userid] = await getTokenbyCredentials(req.body.name, req.body.password, schoolClass.url)}
+    catch (e) {
       res.status(400).send({'error-code':400,'error-message':'Wrong Credentials','data':{}})
       error = true
-    })
+      console.error(e)
+    }
   }
   if (error) {return}
   schoolClass.tokens.forEach(element => {
