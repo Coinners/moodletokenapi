@@ -7,14 +7,13 @@ import fs from 'fs'
 import { ToadScheduler, SimpleIntervalJob, AsyncTask } from 'toad-scheduler'
 import { CookieJar } from 'tough-cookie'
 
-const port = 3000 //the port the server's hosted on
-const adminkey = 'ZL0j7LniNCwqmR13WlwO' //Random 20 character string
-const randomfreq = 10 //in sec
-const refreshtime = 4 //in sec
-const cleardatabase = true //clears whole database after server start ONLY USEFUL FOR DEVELOPMENT
+const port = 3000
+const adminkey = 'ZL0j7LniNCwqmR13WlwO'
+const randomfreq = 10
+const refreshtime = 4
+const cleardatabase = true
 
-//TODO Use better argument capture method by express
-//TODO Handle moodle not available
+//TODO Handle moodle not available [Future]
 
 initialize()
 const scheduler = new ToadScheduler()
@@ -24,6 +23,7 @@ const app = express()
 var classes
 var backup
 app.use(bodyParser.json({ extended: true }))
+//TODO Custom Error handling
 
 app.post('/add', async (req, res) => {
   if (req.body.key !== adminkey)
@@ -45,16 +45,17 @@ app.post('/add', async (req, res) => {
     return
   }
   var id = uuidv4()
+  addClasstoDatabase({ name: name, url: url, id: id })
   res.status(200).send({'error-code':200,'error-message':'OK','data':{'name': name, 'url': url, 'id': id}})
 })
 
-app.post('/remove/*', (req, res) => {
+app.post('/remove/:class', (req, res) => {
   if (req.body.key !== adminkey)
   {
     res.status(400).send({'error-code':400,'error-message':'Invalid adminkey','data':{}})
     return
   }
-  var schoolClass = classes.findOne({'id':req.path.replaceAll(/\/|remove/g,'')})
+  var schoolClass = classes.findOne({'id':req.params.class})
   if (schoolClass === null)
   {
     res.status(400).send({'error-code':404,'error-message':'Could not find class','data':{}})
@@ -67,9 +68,9 @@ app.post('/remove/*', (req, res) => {
   res.status(200).send({'error-code':200,'error-message':'OK','data':{}})
 })
 
-app.post('/*/add', async (req, res) => { //TODO Add option for adding by password + username
+app.post('/:class/add', async (req, res) => { //TODO Add option for adding by password + username
   var error = false
-  var schoolClass = classes.findOne({'id':req.path.replaceAll(/\/|add/g,'')})
+  var schoolClass = classes.findOne({'id':req.params.class})
   if (schoolClass === null)
   {
     res.status(404).send({'error-code':404,'error-message':'Not found','data':{}})
@@ -87,7 +88,7 @@ app.post('/*/add', async (req, res) => { //TODO Add option for adding by passwor
   {
     res.status(400).send({'error-code':400,'error-message':'Token already exists','data':{}})
     return
-  } //TODO get token expiration directly on token check
+  }
   var moodle = await got.get(schoolClass.url,{headers: {Cookie: 'MoodleSession='+token}}).catch((requestError)=>{
     if (requestError instanceof MaxRedirectsError)
     {
@@ -115,8 +116,8 @@ app.get('/', (req, res) => {
   res.status(200).send({'error-code':200,'error-message':'OK','data':{'serverversion':serverversion}})
 })
 
-app.get('/*', (req, res) => {
-  var schoolClass = classes.findOne({'id':req.path.replaceAll('/','')})
+app.get('/:class', (req, res) => {
+  var schoolClass = classes.findOne({'id':req.params.class})
   if (schoolClass === null)
   {
     res.status(404).send({'error-code':404,'error-message':'Not found','data':{}})
@@ -165,14 +166,14 @@ async function refreshToken(user) {
   await client.get('https://moodle.rbs-ulm.de/moodle/login/index.php?testsession='+user.userid,{headers:{Cookie:'MoodleSession='+token}})
 }
 
-function addUsertoTask(user) {//TODO Change logic won't work if time interval === timeleft
+async function addUsertoTask(user) {//TODO Change logic won't work if time interval === timeleft
   var task = new AsyncTask(user.id, refreshToken(user.token, user.userid))
   var job = new SimpleIntervalJob({seconds: await getTimeleft(user.token, user.sessionkey)-refreshtime}, task)
   scheduler.addSimpleIntervalJob(job)
 }
 
 function addUsertoClass(user, schoolClass) {
-  schoolClass['tokens'].push({'name':name,'time':time,'token':token,'userid':userid,'id':id})
+  schoolClass['tokens'].push({'name':user.name,'time':user.time,'token':user.token,'userid':user.userid,'id':user.id})
   classes.update(schoolClass)
   backup.insert(token)
   addUsertoTask(user)
