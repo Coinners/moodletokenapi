@@ -2,7 +2,7 @@ import express from 'express'
 import bodyParser from 'body-parser'
 import loki from 'lokijs'
 import { v4 as uuidv4 } from 'uuid'
-import got, { MaxRedirectsError } from 'got'
+import got from 'got'
 import fs from 'fs'
 import { ToadScheduler, SimpleIntervalJob, AsyncTask } from 'toad-scheduler'
 import { CookieJar } from 'tough-cookie'
@@ -68,8 +68,9 @@ app.post('/remove/:class', (req, res) => {
   res.status(200).send({'error-code':200,'error-message':'OK','data':{}})
 })
 
-app.post('/:class/add', async (req, res) => { //TODO Add option for adding by password + username
+app.post('/:class/add', async (req, res) => {
   var error = false
+  var userid = null
   var schoolClass = classes.findOne({'id':req.params.class})
   if (schoolClass === null)
   {
@@ -77,6 +78,18 @@ app.post('/:class/add', async (req, res) => { //TODO Add option for adding by pa
     return
   }
   var token = req.body.token
+  console.log(req.body.password)
+  if (req.body.password != null) {
+    getTokenbyCredentials(req.body.name, req.body.password, schoolClass.url).then((value)=>{
+      console.log(value)
+      [token, userid] = value
+      console.log([token, userid])
+    }).catch(()=>{
+      res.status(400).send({'error-code':400,'error-message':'Wrong Credentials','data':{}})
+      error = true
+    })
+  }
+  if (error) {return}
   schoolClass.tokens.forEach(element => {
     if (element.token === token)
     {
@@ -89,25 +102,17 @@ app.post('/:class/add', async (req, res) => { //TODO Add option for adding by pa
     res.status(400).send({'error-code':400,'error-message':'Token already exists','data':{}})
     return
   }
-  var moodle = await got.get(schoolClass.url,{headers: {Cookie: 'MoodleSession='+token}}).catch((requestError)=>{
-    if (requestError instanceof MaxRedirectsError)
+  if (req.body.password == null)
+  {
+    var moodle = await got.get(schoolClass.url,{headers: {Cookie: 'MoodleSession='+token}}).catch(()=>{})
+    if (moodle.statusCode !== 200)
     {
       res.status(400).send({'error-code':400,'error-message':'Invalid token','data':{}})
+      return
     }
-    else
-    {
-      res.status(410).send({'error-code':410,'error-message':'Can\'t reach moodle server','data':{}})
-    }
-    error = true
-  })
-  if (error)
-  { return }
-  if (moodle.statusCode !== 200)
-  {
-    res.status(400).send({'error-code':400,'error-message':'Invalid token','data':{}})
-    return
+    var userid = moodle.body.match(/(?<=php\?userid=)\d+/)[0]
   }
-  var user = { name: req.body.name,time: Date.now(),userid: moodle.body.match(/(?<=php\?userid=)\d+/)[0],id: uuidv4() }
+  var user = { name: req.body.name,time: Date.now(),userid: userid,id: uuidv4(),token: token }
   addUsertoClass(user,schoolClass)
   res.status(200).send({'error-code':200,'error-message':'OK','data':user})
 })
@@ -167,15 +172,15 @@ async function refreshToken(user) {
 }
 
 async function addUsertoTask(user) {//TODO Change logic won't work if time interval === timeleft
-  var task = new AsyncTask(user.id, refreshToken(user.token, user.userid))
+  /*var task = new AsyncTask(user.id, refreshToken(user.token, user.userid))
   var job = new SimpleIntervalJob({seconds: await getTimeleft(user.token, user.sessionkey)-refreshtime}, task)
-  scheduler.addSimpleIntervalJob(job)
+  scheduler.addSimpleIntervalJob(job)*/
 }
 
 function addUsertoClass(user, schoolClass) {
   schoolClass['tokens'].push({'name':user.name,'time':user.time,'token':user.token,'userid':user.userid,'id':user.id})
   classes.update(schoolClass)
-  backup.insert(token)
+  backup.insert(user.token)
   addUsertoTask(user)
 }
 
@@ -183,11 +188,7 @@ function addClasstoDatabase(schoolClass) {
   classes.insert({'name': schoolClass.name, 'url': schoolClass.url, 'id': schoolClass.id, 'tokens':[]})
 }
 
-async function addUserbyToken(user) {
-  
-}
-
-async function addUserbyAccount(username, password, url) {
+async function getTokenbyCredentials(username, password, url) {
   const cookieJar = new CookieJar()
   const client = got.extend({cookieJar})
   var login = await client.get(url+'blocks/exa2fa/login/')
@@ -195,7 +196,7 @@ async function addUserbyAccount(username, password, url) {
   var userid = (await client.post(url+'blocks/exa2fa/login/',{form:{ajax: true,anchor:'',logintoken:logintoken,username:username,password:password,token:''}}).text()).match(/(?<=testsession=).*?(?=","original)/)[0]
   await client.get(url+'login/index.php?testsession='+userid)
   var token = (await cookieJar.getCookies('https://moodle.rbs-ulm.de'))[0].toJSON()['value']
-  return token
+  return [token, userid]
 }
 
 function removeProperties(element, ...props) {
