@@ -6,7 +6,6 @@ import got from 'got'
 import fs from 'fs'
 import { ToadScheduler, SimpleIntervalJob, AsyncTask } from 'toad-scheduler'
 import { CookieJar } from 'tough-cookie'
-import { compileFunction } from 'vm'
 
 const port = 3000
 const adminkey = 'ZL0j7LniNCwqmR13WlwO'
@@ -25,6 +24,14 @@ const app = express()
 var classes
 var backup
 app.use(bodyParser.json({ extended: true }))
+app.use((error, req, res, next) => {
+  if (res.headersSent) {
+    return next(err)
+  }
+  console.log('Path: ', req.path)
+  console.error('Error: ', error)
+  res.status(500).send({'error-code':500,'error-message':'Something went wrong on our end','data':{}})
+})
 
 app.post('/add', async (req, res) => {
   if (req.body.key !== adminkey)
@@ -126,12 +133,6 @@ app.get('/:class', (req, res) => {
     return
   }
   res.status(200).send({'error-code':200,'error-message':'OK','data':removeProperties(schoolClass,'meta','$loki')})
-})
-
-app.use((error, req, res, next) => {
-  console.log('Path: ', req.path)
-  console.error('Error: ', error)
-  res.status(500).send({'error-code':500,'error-message':'Something went wrong on our end','data':{}})
 })
 
 function initialize() {
