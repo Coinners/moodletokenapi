@@ -11,18 +11,19 @@ const port = 3000
 const adminkey = 'ZL0j7LniNCwqmR13WlwO'
 const randomfreq = 10
 const refreshtime = 3
-const cleardatabase = true
+var cleardatabase = false
 
 //TODO Handle moodle not available [Future]
 //TODO Implement rate limits [Future]
+//TODO Implement random searching for tokens [Future]
 
 initialize()
 const scheduler = new ToadScheduler()
 var db = new loki('tokens.db', { autoload: true, autosave: true, autoloadCallback: databaseInitialized })
 const serverversion = 1
 const app = express()
-var classes
-var backup
+var classes = null
+var backup = null
 app.use(bodyParser.json({ extended: true }))
 app.use((error, req, res, next) => {
   if (res.headersSent) {
@@ -141,23 +142,32 @@ function initialize() {
   {
     fs.unlink('./tokens.db', ()=>{})
   }
-  fs.writeFile('./tokens.db', '', { flag: 'a' }, (err) => {
-    if (err) throw err
+  fs.writeFile('./tokens.db', '', { flag: 'wx' }, (err) => {
+    if (err) {
+      if (err.code !== 'EEXIST') {
+        {throw err}
+      }
+    }
+    else {
+      cleardatabase = true
+    }
   })
 }
 
 function databaseInitialized() {
   console.log('Database loaded')
   if (cleardatabase) {
-    db.addCollection('classes')
-    db.addCollection('backup')
+    classes = db.addCollection('classes')
+    backup = db.addCollection('backup')
     db.saveDatabase()
   }
-  classes = db.getCollection('classes')
-  backup = db.getCollection('backup')
-  classes.data.forEach(schoolClass => {
-    schoolClass.tokens.forEach(async token => {
-      addUsertoTask(token)
+  else {
+    classes = db.getCollection('classes')
+    backup = db.getCollection('backup')
+  }
+  classes?.data.forEach(schoolClass => {
+    schoolClass.tokens.forEach(user => {
+      addUsertoTask(user)
     })
   })
   app.listen(port, () => {
@@ -172,11 +182,12 @@ async function getTimeleft(user) {
 }
 
 async function refreshToken(user) {
-  console.log('refresh')
   await got.get('https://moodle.rbs-ulm.de/moodle/login/index.php?testsession='+user.userid,{headers:{Cookie:'MoodleSession='+user.token}})
 }
 
 async function addUsertoTask(user) {
+  console.log('add user to task:')
+  console.log(user)
   var task = new AsyncTask(user.id, async ()=>{await refreshToken(user)}, (e)=>{
     scheduler.removeById(user.id) 
     next(e)
