@@ -25,14 +25,6 @@ const app = express()
 var classes = null
 var backup = null
 app.use(bodyParser.json({ extended: true }))
-app.use((error, req, res, next) => {
-  if (res.headersSent) {
-    return next(err)
-  }
-  console.log('Path: ', req.path)
-  console.error('Error: ', error)
-  res.status(500).send({'error-code':500,'error-message':'Something went wrong on our end','data':{}})
-})
 
 app.post('/add', async (req, res) => {
   if (req.body.key !== adminkey)
@@ -54,7 +46,7 @@ app.post('/add', async (req, res) => {
     return
   }
   var id = uuidv4()
-  addClasstoDatabase({ name: name, url: url, id: id })
+  classes.insert({'name': name, 'url': url, 'id': id, 'tokens':[]})
   res.status(200).send({'error-code':200,'error-message':'OK','data':{'name': name, 'url': url, 'id': id}})
 })
 
@@ -70,8 +62,8 @@ app.post('/remove/:class', (req, res) => {
     res.status(400).send({'error-code':404,'error-message':'Could not find class','data':{}})
     return
   }
-  schoolClass.tokens.forEach(element => {
-    scheduler.removeById(element.id)
+  schoolClass.tokens.forEach(user => {
+    scheduler.removeById(user.id)
   })
   classes.remove(schoolClass)
   res.status(200).send({'error-code':200,'error-message':'OK','data':{}})
@@ -133,7 +125,16 @@ app.get('/:class', (req, res) => {
     res.status(404).send({'error-code':404,'error-message':'Not found','data':{}})
     return
   }
-  res.status(200).send({'error-code':200,'error-message':'OK','data':removeProperties(schoolClass,'meta','$loki')})
+  res.status(200).send({'error-code':200,'error-message':'OK','data':removeLokiProperties(schoolClass)})
+})
+
+app.use((error, req, res, next) => {
+  if (res.headersSent) {
+    return next(err)
+  }
+  console.log('Path: ', req.path)
+  console.error('Error: ', error)
+  res.status(500).send({'error-code':500,'error-message':'Something went wrong on our end','data':{}})
 })
 
 function initialize() {
@@ -190,9 +191,9 @@ async function addUsertoTask(user) {
   console.log(user)
   var task = new AsyncTask(user.id, async ()=>{await refreshToken(user)}, (e)=>{
     scheduler.removeById(user.id) 
-    next(e)
+    console.error(e)
   })
-  refreshToken(user).catch((e)=>{next(e)})
+  refreshToken(user).catch((e)=>{console.error(e)})
   var job = new SimpleIntervalJob({seconds: await getTimeleft(user)-refreshtime}, task)
   scheduler.addSimpleIntervalJob(job)
 }
@@ -202,10 +203,6 @@ function addUsertoClass(user, schoolClass) {
   classes.update(schoolClass)
   backup.insert({token:user.token})
   addUsertoTask(user)
-}
-
-function addClasstoDatabase(schoolClass) {
-  classes.insert({'name': schoolClass.name, 'url': schoolClass.url, 'id': schoolClass.id, 'tokens':[]})
 }
 
 async function getTokenbyCredentials(username, password, url) {
@@ -219,7 +216,7 @@ async function getTokenbyCredentials(username, password, url) {
   return [token, userid, sessionkey]
 }
 
-function removeProperties(element, ...props) {
-  props.forEach(prop => delete element[prop])
-  return element
+function removeLokiProperties(element) {
+  const { $loki, meta, ...removed } = element
+  return removed
 }
