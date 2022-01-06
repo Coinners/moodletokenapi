@@ -60,3 +60,4 @@ dist
 *.db
 .vscode/
 tokens.json
+servertest.py
