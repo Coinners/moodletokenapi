@@ -11,10 +11,11 @@ import { compileFunction } from 'vm'
 const port = 3000
 const adminkey = 'ZL0j7LniNCwqmR13WlwO'
 const randomfreq = 10
-const refreshtime = 4
+const refreshtime = 3
 const cleardatabase = true
 
 //TODO Handle moodle not available [Future]
+//TODO Implement rate limits [Future]
 
 initialize()
 const scheduler = new ToadScheduler()
@@ -24,7 +25,6 @@ const app = express()
 var classes
 var backup
 app.use(bodyParser.json({ extended: true }))
-//TODO Custom Error handling
 
 app.post('/add', async (req, res) => {
   if (req.body.key !== adminkey)
@@ -72,6 +72,7 @@ app.post('/remove/:class', (req, res) => {
 app.post('/:class/add', async (req, res) => {
   var error = false
   var userid = null
+  var sessionkey = null
   var schoolClass = classes.findOne({'id':req.params.class})
   if (schoolClass === null)
   {
@@ -80,37 +81,35 @@ app.post('/:class/add', async (req, res) => {
   }
   var token = req.body.token
   if (req.body.password != null) {
-    try {[token, userid] = await getTokenbyCredentials(req.body.name, req.body.password, schoolClass.url)}
+    try {[token, userid, sessionkey] = await getTokenbyCredentials(req.body.name, req.body.password, schoolClass.url)}
     catch (e) {
       res.status(400).send({'error-code':400,'error-message':'Wrong Credentials','data':{}})
       error = true
-      console.error(e)
+      next(e)
     }
   }
   if (error) {return}
   schoolClass.tokens.forEach(element => {
     if (element.token === token)
     {
+      res.status(400).send({'error-code':400,'error-message':'Token already exists','data':{}})
       error = true
       return
     }
   })
-  if (error)
-  {
-    res.status(400).send({'error-code':400,'error-message':'Token already exists','data':{}})
-    return
-  }
+  if (error) {return}
   if (req.body.password == null)
   {
     var moodle = await got.get(schoolClass.url,{headers: {Cookie: 'MoodleSession='+token}}).catch(()=>{})
-    if (moodle.statusCode !== 200)
+    if (moodle.statusCode != 200)
     {
       res.status(400).send({'error-code':400,'error-message':'Invalid token','data':{}})
       return
     }
-    var userid = moodle.body.match(/(?<=php\?userid=)\d+/)[0]
+    userid = moodle.body.match(/(?<=php\?userid=)\d+/)[0]
+    sessionkey = moodle.body.match(/(?<=sesskey=)\w{10}/)[0]
   }
-  var user = { name: req.body.name,time: Date.now(),userid: userid,id: uuidv4(),token: token }
+  var user = { name: req.body.name,time: Date.now(),userid: userid,id: uuidv4(),token: token,sessionkey: sessionkey }
   addUsertoClass(user,schoolClass)
   res.status(200).send({'error-code':200,'error-message':'OK','data':user})
 })
@@ -127,6 +126,12 @@ app.get('/:class', (req, res) => {
     return
   }
   res.status(200).send({'error-code':200,'error-message':'OK','data':removeProperties(schoolClass,'meta','$loki')})
+})
+
+app.use((error, req, res, next) => {
+  console.log('Path: ', req.path)
+  console.error('Error: ', error)
+  res.status(500).send({'error-code':500,'error-message':'Something went wrong on our end','data':{}})
 })
 
 function initialize() {
@@ -160,18 +165,23 @@ function databaseInitialized() {
 }
 
 async function getTimeleft(user) {
-  var timeleft = await client.post('https://moodle.rbs-ulm.de/moodle/lib/ajax/service.php?sesskey='+sessionkey+'&info=core_session_time_remaining&nosessionupdate=true', {json:[{"index":0,"methodname":"core_session_time_remaining","args":{}}], headers:{Cookie:'MoodleSession='+token}}).json()
+  var timeleft = await got.post('https://moodle.rbs-ulm.de/moodle/lib/ajax/service.php?sesskey='+user.sessionkey+'&info=core_session_time_remaining&nosessionupdate=true', {json:[{"index":0,"methodname":"core_session_time_remaining","args":{}}], headers:{Cookie:'MoodleSession='+user.token}}).json()
   timeleft = timeleft[0]['data']['timeremaining']
   return timeleft
 }
 
 async function refreshToken(user) {
-  await client.get('https://moodle.rbs-ulm.de/moodle/login/index.php?testsession='+user.userid,{headers:{Cookie:'MoodleSession='+token}})
+  console.log('refresh')
+  await got.get('https://moodle.rbs-ulm.de/moodle/login/index.php?testsession='+user.userid,{headers:{Cookie:'MoodleSession='+user.token}})
 }
 
-async function addUsertoTask(user) {//TODO Change logic won't work if time interval === timeleft
-  var task = new AsyncTask(user.id, refreshToken(user.token, user.userid))
-  var job = new SimpleIntervalJob({seconds: await getTimeleft(user.token, user.sessionkey)-refreshtime}, task)
+async function addUsertoTask(user) {
+  var task = new AsyncTask(user.id, async ()=>{await refreshToken(user)}, (e)=>{
+    scheduler.removeById(user.id) 
+    next(e)
+  })
+  refreshToken(user).catch((e)=>{next(e)})
+  var job = new SimpleIntervalJob({seconds: await getTimeleft(user)-refreshtime}, task)
   scheduler.addSimpleIntervalJob(job)
 }
 
@@ -192,9 +202,9 @@ async function getTokenbyCredentials(username, password, url) {
   var login = await client.get(url+'blocks/exa2fa/login/')
   var logintoken = login.body.match(/(?<="logintoken" value=")\w{32}/)[0]
   var userid = (await client.post(url+'blocks/exa2fa/login/',{form:{ajax: true,anchor:'',logintoken:logintoken,username:username,password:password,token:''}}).text()).match(/(?<=testsession=).*?(?=","original)/)[0]
-  await client.get(url+'login/index.php?testsession='+userid)
+  var sessionkey = (await client.get(url).text()).match(/(?<=sesskey=)\w{10}/)[0]
   var token = (await cookieJar.getCookies('https://moodle.rbs-ulm.de'))[0].toJSON()['value']
-  return [token, userid]
+  return [token, userid, sessionkey]
 }
 
 function removeProperties(element, ...props) {
