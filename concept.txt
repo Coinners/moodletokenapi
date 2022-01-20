@@ -8,17 +8,17 @@ consistent responses:
 {
     "error-code":200,
     "error-message":"OK",
-    "data":[]
+    "data":{}
 }
 {
     "error-code":404,
     "error-message":"Not found",
-    "data":[]
+    "data":{}
 }
 {
     "error-code":400,
     "error-message":"Bad request",
-    "data":[]
+    "data":{}
 }
 
 Read:

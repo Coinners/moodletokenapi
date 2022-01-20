@@ -11,7 +11,7 @@ const port = 3000
 const adminkey = 'ZL0j7LniNCwqmR13WlwO'
 const randomfreq = 10
 const refreshtime = 3
-var cleardatabase = false
+var cleardatabase = true
 
 //TODO Handle moodle not available [Future]
 //TODO Implement rate limits [Future]
@@ -19,7 +19,7 @@ var cleardatabase = false
 
 initialize()
 const scheduler = new ToadScheduler()
-var db = new loki('tokens.db', { autoload: true, autosave: true, autoloadCallback: databaseInitialized })
+var db = new loki('./tokens.db', { autoload: true, autosave: true, autoloadCallback: databaseInitialized })
 const serverversion = 1
 const app = express()
 var classes = null
@@ -199,7 +199,7 @@ async function addUsertoTask(user) {
 }
 
 function addUsertoClass(user, schoolClass) {
-  schoolClass['tokens'].push({'name':user.name,'time':user.time,'token':user.token,'userid':user.userid,'id':user.id})
+  schoolClass['tokens'].push({'name':user.name,'time':user.time,'token':user.token,'userid':user.userid,'id':user.id,'sessionkey':user.sessionkey})
   classes.update(schoolClass)
   backup.insert({token:user.token})
   addUsertoTask(user)
