@@ -129,7 +129,9 @@ app.get('/:class', (req, res) => {
   res.status(200).send({'error-code':200,'error-message':'OK','data':removeLokiProperties(schoolClass)})
 })
 
-//TODO Add handler for '/*' for all http methods for custom error
+app.all('/*', (req, res) => {
+  res.status(405).send({'error-code':405,'error-message':'Method Not Allowed','data':{}})
+})
 
 app.use((error, req, res, next) => {
   if (res.headersSent) {
