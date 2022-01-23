@@ -11,11 +11,12 @@ const port = 3000
 const adminkey = 'ZL0j7LniNCwqmR13WlwO'
 const randomfreq = 10
 const refreshtime = 3
-var cleardatabase = true
+var cleardatabase = false
 
 //TODO Handle moodle not available [Future]
 //TODO Implement rate limits [Future]
 //TODO Implement random searching for tokens [Future]
+//TODO Fix linux server path handling
 
 initialize()
 const scheduler = new ToadScheduler()
@@ -89,7 +90,7 @@ app.post('/:class/add', async (req, res) => {
     }
   }
   if (error) {return}
-  schoolClass.tokens.forEach(element => {
+  schoolClass.tokens.forEach(element => { //TODO Implement preventation of double token through password add
     if (element.token === token)
     {
       res.status(400).send({'error-code':400,'error-message':'Token already exists','data':{}})
@@ -127,6 +128,8 @@ app.get('/:class', (req, res) => {
   }
   res.status(200).send({'error-code':200,'error-message':'OK','data':removeLokiProperties(schoolClass)})
 })
+
+//TODO Add handler for '/*' for all http methods for custom error
 
 app.use((error, req, res, next) => {
   if (res.headersSent) {

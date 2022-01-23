@@ -2,7 +2,7 @@ Collection classes = [{"name":"6TG10/1 Robert Bosch","url":"https://moodle.rbs-u
 
 Collection backup = ["","",""]
 
-One token = {"name":"person","time":1648014517,"token":"oerusngrkggkjregm","userid":2544,"sessionkey":"3Qti9PjNUc","id":"a9475b93-ce68-4bee-b510-8e8729f5a5a2"}
+One token = {"name":"person","time":1648014517,"token":"oerusngrkggkjregm","userid":"2544","sessionkey":"3Qti9PjNUc","id":"a9475b93-ce68-4bee-b510-8e8729f5a5a2"}
 
 consistent responses:
 {
