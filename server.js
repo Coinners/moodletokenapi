@@ -130,7 +130,7 @@ app.get('/:class', (req, res) => {
 })
 
 app.all('/*', (req, res) => {
-  res.status(405).send({'error-code':405,'error-message':'Method Not Allowed','data':{}})
+  res.status(404).send({'error-code':404,'error-message':`Can't use ${req.method} on ${req.path}`,'data':{}})
 })
 
 app.use((error, req, res, next) => {
