@@ -17,6 +17,7 @@ var cleardatabase = false
 //TODO Implement rate limits [Future]
 //TODO Implement random searching for tokens [Future]
 //TODO Fix linux server path handling
+//TODO Introduce custom error codes
 
 initialize()
 const scheduler = new ToadScheduler()
@@ -90,7 +91,7 @@ app.post('/:class/add', async (req, res) => {
     }
   }
   if (error) {return}
-  schoolClass.tokens.forEach(element => { //TODO Implement preventation of double token through password add
+  schoolClass.tokens.forEach(element => { //TODO Implement preventation of double token through moodle userid check
     if (element.token === token)
     {
       res.status(400).send({'error-code':400,'error-message':'Token already exists','data':{}})
@@ -102,6 +103,11 @@ app.post('/:class/add', async (req, res) => {
   if (req.body.password == null)
   {
     var moodle = await got.get(schoolClass.url,{headers: {Cookie: 'MoodleSession='+token}}).catch(()=>{})
+    if (moodle == null )
+    {
+      res.status(400).send({'error-code':400,'error-message':'Invalid token','data':{}})
+      return
+    }
     if (moodle.statusCode != 200)
     {
       res.status(400).send({'error-code':400,'error-message':'Invalid token','data':{}})
@@ -181,7 +187,7 @@ function databaseInitialized() {
   })
 }
 
-async function getTimeleft(user) {
+async function getTimeleft(user) { //TODO Fix error => .catch() on all calls
   var timeleft = await got.post('https://moodle.rbs-ulm.de/moodle/lib/ajax/service.php?sesskey='+user.sessionkey+'&info=core_session_time_remaining&nosessionupdate=true', {json:[{"index":0,"methodname":"core_session_time_remaining","args":{}}], headers:{Cookie:'MoodleSession='+user.token}}).json()
   timeleft = timeleft[0]['data']['timeremaining']
   return timeleft
