@@ -17,7 +17,7 @@ var cleardatabase = false
 //TODO Implement rate limits [Future]
 //TODO Implement random searching for tokens [Future]
 //TODO Fix linux server path handling
-//TODO Introduce custom error codes
+//TODO CATCH ALL ASYNC CALLS
 
 initialize()
 const scheduler = new ToadScheduler()
@@ -31,44 +31,44 @@ app.use(bodyParser.json({ extended: true }))
 app.post('/add', async (req, res) => {
   if (req.body.key !== adminkey)
   {
-    res.status(400).send({'error-code':400,'error-message':'Invalid adminkey','data':{}})
+    returnResponse(res, Errors.Adminkey)
     return
   }
   var name = req.body.name
   var url = req.body.url.match(/http.+\/moodle/)[0]+'/' //TODO Change matching pattern to make request for validation
   if (url === null)
   {
-    res.status(400).send({'error-code':400,'error-message':'Invalid url','data':{}})
+    returnResponse(res, Errors.Url)
     return
   }
   var moodle = await got.get(url).text()
   if (moodle.match('moodle') === null)
   {
-    res.status(400).send({'error-code':400,'error-message':'Invalid website','data':{}})
+    returnResponse(res, Errors.Website)
     return
   }
   var id = uuidv4()
   classes.insert({'name': name, 'url': url, 'id': id, 'tokens':[]})
-  res.status(200).send({'error-code':200,'error-message':'OK','data':{'name': name, 'url': url, 'id': id}})
+  returnResponse(res,Errors.None,{'name': name, 'url': url, 'id': id})
 })
 
 app.post('/remove/:class', (req, res) => {
   if (req.body.key !== adminkey)
   {
-    res.status(400).send({'error-code':400,'error-message':'Invalid adminkey','data':{}})
+    returnResponse(res, Errors.Adminkey)
     return
   }
   var schoolClass = classes.findOne({'id':req.params.class})
   if (schoolClass === null)
   {
-    res.status(400).send({'error-code':404,'error-message':'Could not find class','data':{}})
+    returnResponse(res, Errors.Class)
     return
   }
   schoolClass.tokens.forEach(user => {
     scheduler.removeById(user.id)
   })
   classes.remove(schoolClass)
-  res.status(200).send({'error-code':200,'error-message':'OK','data':{}})
+  returnResponse(res, Errors.None)
 })
 
 app.post('/:class/add', async (req, res) => {
@@ -78,14 +78,14 @@ app.post('/:class/add', async (req, res) => {
   var schoolClass = classes.findOne({'id':req.params.class})
   if (schoolClass === null)
   {
-    res.status(404).send({'error-code':404,'error-message':'Not found','data':{}})
+    returnResponse(res, Errors.Class)
     return
   }
   var token = req.body.token
   if (req.body.password != null) {
     try {[token, userid, sessionkey] = await getTokenbyCredentials(req.body.name, req.body.password, schoolClass.url)}
     catch (e) {
-      res.status(400).send({'error-code':400,'error-message':'Wrong Credentials','data':{}})
+      returnResponse(res, Errors.Credentials)
       error = true
       next(e)
     }
@@ -94,7 +94,7 @@ app.post('/:class/add', async (req, res) => {
   schoolClass.tokens.forEach(element => { //TODO Implement preventation of double token through moodle userid check
     if (element.token === token)
     {
-      res.status(400).send({'error-code':400,'error-message':'Token already exists','data':{}})
+      returnResponse(res, Errors.TokenExist)
       error = true
       return
     }
@@ -105,12 +105,12 @@ app.post('/:class/add', async (req, res) => {
     var moodle = await got.get(schoolClass.url,{headers: {Cookie: 'MoodleSession='+token}}).catch(()=>{})
     if (moodle == null )
     {
-      res.status(400).send({'error-code':400,'error-message':'Invalid token','data':{}})
+      returnResponse(res, Errors.Credentials)
       return
     }
     if (moodle.statusCode != 200)
     {
-      res.status(400).send({'error-code':400,'error-message':'Invalid token','data':{}})
+      returnResponse(res, Errors.Credentials)
       return
     }
     userid = moodle.body.match(/(?<=php\?userid=)\d+/)[0]
@@ -118,25 +118,25 @@ app.post('/:class/add', async (req, res) => {
   }
   var user = { name: req.body.name,time: Date.now(),userid: userid,id: uuidv4(),token: token,sessionkey: sessionkey }
   addUsertoClass(user,schoolClass)
-  res.status(200).send({'error-code':200,'error-message':'OK','data':user})
+  returnResponse(res, Errors.None, user)
 })
 
 app.get('/', (req, res) => {
-  res.status(200).send({'error-code':200,'error-message':'OK','data':{'serverversion':serverversion}})
+  returnResponse(res, Errors.None, {'serverversion':serverversion})
 })
 
 app.get('/:class', (req, res) => {
   var schoolClass = classes.findOne({'id':req.params.class})
   if (schoolClass === null)
   {
-    res.status(404).send({'error-code':404,'error-message':'Not found','data':{}})
+    returnResponse(res, Errors.Class)
     return
   }
-  res.status(200).send({'error-code':200,'error-message':'OK','data':removeLokiProperties(schoolClass)})
+  returnResponse(res, Errors.None, removeLokiProperties(schoolClass))
 })
 
 app.all('/*', (req, res) => {
-  res.status(404).send({'error-code':404,'error-message':`Can't use ${req.method} on ${req.path}`,'data':{}})
+  res.status(400).send({'error-code':4008,'error-message':`Can't use ${req.method} on ${req.path}`,'data':{}}) //TODO Move to global response handler
 })
 
 app.use((error, req, res, next) => {
@@ -145,7 +145,7 @@ app.use((error, req, res, next) => {
   }
   console.log('Path: ', req.path)
   console.error('Error: ', error)
-  res.status(500).send({'error-code':500,'error-message':'Something went wrong on our end','data':{}})
+  returnResponse(res, Errors.Internal)
 })
 
 function initialize() {
@@ -187,7 +187,7 @@ function databaseInitialized() {
   })
 }
 
-async function getTimeleft(user) { //TODO Fix error => .catch() on all calls
+async function getTimeleft(user) {
   var timeleft = await got.post('https://moodle.rbs-ulm.de/moodle/lib/ajax/service.php?sesskey='+user.sessionkey+'&info=core_session_time_remaining&nosessionupdate=true', {json:[{"index":0,"methodname":"core_session_time_remaining","args":{}}], headers:{Cookie:'MoodleSession='+user.token}}).json()
   timeleft = timeleft[0]['data']['timeremaining']
   return timeleft
@@ -230,4 +230,36 @@ async function getTokenbyCredentials(username, password, url) {
 function removeLokiProperties(element) {
   const { $loki, meta, ...removed } = element
   return removed
+}
+
+const Errors = Object.freeze({"None":4000, "Adminkey":4001, "Url":4003, "Website":4004, "Class":4005, "Credentials":4006, "TokenExist":4007, "Internal":4008})
+function returnResponse(res, error, data = {}) {
+  switch (error) {
+    case Errors.None:
+      res.status(200).send({'error-code':Errors.None,'error-message':'OK','data':data})
+      break
+    case Errors.Adminkey:
+      res.status(400).send({'error-code':Errors.Adminkey,'error-message':'Invalid adminkey','data':{}})
+      break
+    case Errors.Url:
+      res.status(400).send({'error-code':Errors.Url,'error-message':'Invalid url','data':{}})
+      break
+    case Errors.Website:
+      res.status(400).send({'error-code':Errors.Website,'error-message':'Invalid website','data':{}})
+      break
+    case Errors.Class:
+      res.status(400).send({'error-code':Errors.Class,'error-message':'Can\'t find class','data':{}})
+       break
+    case Errors.Credentials:
+      res.status(400).send({'error-code':Errors.Credentials,'error-message':'Invalid Credentials','data':{}})
+      break
+    case Errors.TokenExist:
+      res.status(400).send({'error-code':Errors.TokenExist,'error-message':'Token already exists','data':{}})
+      break
+    case Errors.Internal:
+      res.status(400).send({'error-code':Errors.Internal,'error-message':'Something went wrong on our end','data':{}})
+      break
+    default:
+      throw SyntaxError
+  }
 }

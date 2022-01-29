@@ -11,18 +11,19 @@ consistent responses:
     "data":{}
 }
 {
-    "error-code":404,
-    "error-message":"Not found",
-    "data":{}
-}
-{
     "error-code":400,
     "error-message":"Bad request",
     "data":{}
 }
 
-Read:
-https://docs.flutter.dev/cookbook/networking/fetch-data
-https://riverpod.dev/docs/concepts/providers
-https://docs.flutter.dev/development/ui/navigation/deep-linking
-https://pub.dev/packages/qr_flutter
+custom error-codes:
+
+None - 4000
+Invalid Adminkey - 4001
+Invalid Url - 4002
+Invalid Website - 4003
+Can't find class - 4004
+Wrong Credentials / Invalid token - 4005
+Token exists - 4006
+Internal error - 4007
+Invalid Http Method - 4008
