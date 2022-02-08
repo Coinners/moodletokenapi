@@ -71,6 +71,26 @@ app.post('/remove/:class', (req, res) => {
   returnResponse(res, Errors.None)
 })
 
+app.post('/clear/:class', (req, res) =>{
+  if (req.body.key !== adminkey)
+  {
+    returnResponse(res, Errors.Adminkey)
+    return
+  }
+  var schoolClass = classes.findOne({'id':req.params.class})
+  if (schoolClass === null)
+  {
+    returnResponse(res, Errors.Class)
+    return
+  }
+  schoolClass.tokens.forEach(user => {
+    scheduler.removeById(user.id)
+  })
+  schoolClass.tokens = []
+  classes.update(schoolClass)
+  returnResponse(res, Errors.None)
+})
+
 app.post('/:class/add', async (req, res) => {
   var error = false
   var userid = null
@@ -232,7 +252,7 @@ function removeLokiProperties(element) {
   return removed
 }
 
-const Errors = Object.freeze({"None":4000, "Adminkey":4001, "Url":4003, "Website":4004, "Class":4005, "Credentials":4006, "TokenExist":4007, "Internal":4008})
+const Errors = Object.freeze({"None":4000, "Adminkey":4001, "Url":4002, "Website":4003, "Class":4004, "Credentials":4005, "TokenExist":4006, "Internal":4007})
 function returnResponse(res, error, data = {}) {
   switch (error) {
     case Errors.None:
