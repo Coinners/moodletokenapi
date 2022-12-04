@@ -9,5 +9,56 @@
 
 ## Introduction
 Welcome to the docs for communicating with the Moodle Token Servers. This docs are for developing your own client or for manipulating data programmatically.
-## Overview
-Here is an overview of all features and how to use them
+
+**Communication/Protocols used:**
+Communication with the servers is currently supported through the use of the http/https protocol. All available methods are listed below.
+
+**Authorization:**
+The servers don't use any kind of authorization at the moment of writing this. This may change in the future but it isn't planned for the moment.
+
+**URL Parameters:**
+A request will always require the following parameters:
+`serverip`: The ip address or domain of the server
+`classid`: The Version 4 UUID of the class
+
+## Methods:
+`GET http://serverip/classid`
+Gets all entries of `classid`
+
+`POST http://serverip/classid/add`
+Adds an entry to `classid`
+> Requires Entry Payload:
+```json
+{
+  "name":"name of person",
+  "token":"token of the person"
+}
+```
+**Responses:**
+The server will always reply with a json object containing following data, for example:
+```json
+{
+  "error-code":200, //will always be a valid http status code
+  "error-message":"OK", //contains an error message or OK
+  "data":[ //will be empty or contain content depending on the case
+    {"name":"demo person","time":1648014517,"token":"oerusngrkggkjregm"},
+    {"name":"demo person2","time":1648014517,"token":"oerusngrkggkjregm"}
+  ]
+}
+```
+```json
+{
+  "error-code":404,
+  "error-message":"This class couldn't be found",
+  "data":[]
+}
+```
+```json
+{
+  "error-code":400,
+  "error-message":"The givin token is invalid",
+  "data":[]
+}
+```
+**Add classes:**
+This is currently only available for the server admins. Contact them for adding a class
